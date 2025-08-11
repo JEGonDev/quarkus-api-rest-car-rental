@@ -2,6 +2,7 @@ package org.jegdev.car_rental.vehicles.infrastructure.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.jegdev.car_rental.vehicles.domain.model.VehicleStatus;
@@ -9,6 +10,7 @@ import org.jegdev.car_rental.vehicles.domain.model.VehicleType;
 
 @Data
 @AllArgsConstructor
+@Builder
 @Schema(name = "VehicleRequest", description = "Datos requeridos para la creación o edición de un vehículo")
 public class VehicleRequest {
 
