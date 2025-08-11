@@ -28,15 +28,37 @@ public class VehicleRepositoryImpl implements VehicleRepository {
         this.vehiclePersistenceMapper = vehiclePersistenceMapper;
     }
 
-    @Override
-    public Vehicle save(Vehicle vehicle) {
-        return null;
-    }
-
-    @Override
+    /**
+     * Guarda un vehículo en la base de datos.
+     * Utiliza PanacheMongoRepository para persistir la entidad VehicleEntity.
+     *
+     * @param vehicle El vehículo del dominio a guardar.
+     * @return El vehículo guardado convertido de vuelta al dominio.
+     */
     @Retry(maxRetries = 3, delay = 200) // Reintenta la operación hasta 3 veces en caso de fallo con un retraso de 200 ms entre intentos
     @Timeout(200) // Tiempo máximo de espera de 200 ms para la operación
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
+    @Override
+    public Vehicle save(Vehicle vehicle) {
+        // Mapeamos el vehículo del dominio a la entidad de persistencia
+        VehicleEntity vehicleEntity = vehiclePersistenceMapper.toEntity(vehicle);
+        // Guardamos la entidad en la base de datos usando PanacheMongoRepository
+        repository.persist(vehicleEntity);
+        // Devolvemos el vehículo mapeado de vuelta al dominio
+        return vehiclePersistenceMapper.toDomain(vehicleEntity);
+    }
+
+    /**
+     * Busca un vehículo por su matrícula.
+     * Utiliza PanacheMongoRepository para realizar la consulta.
+     *
+     * @param plate La matrícula del vehículo a buscar.
+     * @return Un Optional que contiene el vehículo encontrado, o vacío si no se encuentra.
+     */
+    @Retry(maxRetries = 3, delay = 200) // Reintenta la operación hasta 3 veces en caso de fallo con un retraso de 200 ms entre intentos
+    @Timeout(200) // Tiempo máximo de espera de 200 ms para la operación
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
+    @Override
     public Optional<Vehicle> findByPlate(String plate) {
         return repository.find("plate", plate)
                 .firstResultOptional()
