@@ -1,6 +1,7 @@
 package org.jegdev.car_rental.vehicles.infrastructure.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,7 @@ public class VehicleRequest {
     // Identificador del vehículo, se genera automáticamente desde MongoDB
 
     @Schema(description = "Tipo de vehículo", example = "CAR", required = true)
-    @NotBlank(message = "El tipo de vehículo es obligatorio.")
+    @NotNull(message = "El tipo de vehículo es obligatorio.")
     private VehicleType type; // CAR, MOTO, TRUCK
 
     @Schema(description = "Marca del vehículo", example = "Toyota", required = true)
@@ -36,7 +37,7 @@ public class VehicleRequest {
     private int year; // Anio de fabricación del vehículo
 
     @Schema(description = "Estado del vehículo", example = "AVAILABLE", required = true)
-    @NotBlank(message = "El estado del vehículo es obligatorio.")
+    @NotNull(message = "El estado del vehículo es obligatorio.")
     private VehicleStatus status; // AVAILABLE, RENTED, MAINTENANCE
 
     @Schema(description = "Tarifa por día en la moneda local", example = "50.0", required = true)
