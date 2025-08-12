@@ -39,8 +39,11 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(200)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Driver save(Driver driver) {
+        // Primero, se convierte el objeto de dominio Driver a una entidad DriverEntity
         DriverEntity driverEntity = mapper.toEntity(driver);
+        // Luego, se persiste la entidad en la base de datos utilizando el repositorio Panache
         repository.persist(driverEntity);
+        // Finalmente, se convierte la entidad persistida de vuelta a un objeto de dominio Driver
         return mapper.toDomain(driverEntity);
     }
 
@@ -54,9 +57,9 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(200)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Optional<Driver> findByDocumentId(String documentId) {
-        return repository.find("documentId", documentId)
-                .firstResultOptional()
-                .map(mapper::toDomain);
+        return repository.find("documentId", documentId) // Utiliza el repositorio Panache para buscar por documentId
+                .firstResultOptional() // Obtiene el primer resultado como un Optional
+                .map(mapper::toDomain); // Convierte la entidad DriverEntity a un objeto de dominio Driver
     }
 
     /**
@@ -65,10 +68,10 @@ public class DriverRepositoryImpl implements DriverRepository {
      */
     @Override
     public List<Driver> findAll() {
-        return repository.findAll()
-                .stream()
-                .map(mapper::toDomain)
-                .toList();
+        return repository.findAll() // Utiliza el repositorio Panache para obtener todos los conductores
+                .stream() // Convierte el resultado a un Stream
+                .map(mapper::toDomain) // Mapea cada entidad DriverEntity a un objeto de dominio Driver
+                .toList(); // Convierte el Stream de objetos Driver a una lista
     }
 
     /**
@@ -81,8 +84,11 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(200)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Driver update(Driver driver) {
+        // Primero, se convierte el objeto de dominio Driver a una entidad DriverEntity
         DriverEntity driverEntity = mapper.toEntity(driver);
+        // Luego, se actualiza la entidad en la base de datos utilizando el repositorio Panache
         repository.update(driverEntity);
+        // Finalmente, se convierte la entidad actualizada de vuelta a un objeto de dominio Driver
         return mapper.toDomain(driverEntity);
     }
 
