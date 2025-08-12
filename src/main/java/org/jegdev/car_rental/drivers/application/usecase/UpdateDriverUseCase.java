@@ -5,10 +5,8 @@ import jakarta.inject.Inject;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.domain.repository.DriverRepository;
 import org.jegdev.car_rental.drivers.exceptions.personalized.DriverNotFoundByDocumentIdException;
-import org.jegdev.car_rental.drivers.infrastructure.dto.DriverRequest;
+import org.jegdev.car_rental.drivers.infrastructure.dto.DriverUpdateRequest;
 import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverDtoMapper;
-
-import java.util.Optional;
 
 /**
  * Caso de uso para la actualización de un conductor existente.
@@ -32,16 +30,16 @@ public class UpdateDriverUseCase {
      * Orquesta los pasos necesarios: validación, actualización y guardado.
      *
      * @param documentId El ID del documento del conductor a actualizar.
-     * @param driverRequest El DTO con los nuevos datos del conductor.
+     * @param driverUpdateRequest El DTO con los nuevos datos del conductor.
      * @return El objeto de dominio del conductor actualizado.
      * @throws DriverNotFoundByDocumentIdException Si el conductor no se encuentra.
      */
-    public Driver updateDriverByDocumentId(String documentId, DriverRequest driverRequest) {
+    public Driver updateDriverByDocumentId(String documentId, DriverUpdateRequest driverUpdateRequest) {
         // Paso 1: Buscar y validar que el conductor exista.
         Driver existingDriver = findExistingDriver(documentId);
 
         // Paso 2: Actualizar las propiedades del conductor existente con los nuevos datos.
-        Driver updatedDriver = updateDriverData(existingDriver, driverRequest);
+        Driver updatedDriver = updateDriverData(existingDriver, driverUpdateRequest);
 
         // Paso 3: Guardar el conductor actualizado en la base de datos.
         return saveDriver(updatedDriver);
@@ -66,7 +64,7 @@ public class UpdateDriverUseCase {
      * @param driverRequest El DTO con los nuevos datos.
      * @return El objeto de dominio con los datos actualizados.
      */
-    private Driver updateDriverData(Driver existingDriver, DriverRequest driverRequest) {
+    private Driver updateDriverData(Driver existingDriver, DriverUpdateRequest driverRequest) {
         Driver updatedData = driverDtoMapper.toDomain(driverRequest);
 
         existingDriver.setName(updatedData.getName());
@@ -85,6 +83,6 @@ public class UpdateDriverUseCase {
      * @return El conductor guardado.
      */
     private Driver saveDriver(Driver driver) {
-        return driverRepository.save(driver);
+        return driverRepository.update(driver);
     }
 }

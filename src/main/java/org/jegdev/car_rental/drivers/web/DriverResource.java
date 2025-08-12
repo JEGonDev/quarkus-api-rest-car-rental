@@ -18,6 +18,7 @@ import org.jegdev.car_rental.drivers.application.usecase.UpdateDriverUseCase;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverRequest;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverResponse;
+import org.jegdev.car_rental.drivers.infrastructure.dto.DriverUpdateRequest;
 import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverDtoMapper;
 
 /**
@@ -63,7 +64,7 @@ public class DriverResource {
             required = true,
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = DriverRequest.class)
+                    schema = @Schema(implementation = DriverUpdateRequest.class)
             )
     )
     @APIResponse(
@@ -88,7 +89,7 @@ public class DriverResource {
                                                      required = true,
                                                      example = "123456789"
                                              ) @PathParam("documentId") String documentId,
-                                             @Valid DriverRequest driverRequest) {
+                                             @Valid DriverUpdateRequest driverRequest) {
         Driver updatedDriver = updateDriverUseCase.updateDriverByDocumentId(documentId, driverRequest);
         DriverResponse driverResponse = driverDtoMapper.toResponse(updatedDriver);
         return Response.ok(driverResponse).build();

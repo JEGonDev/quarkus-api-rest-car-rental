@@ -80,16 +80,18 @@ public class DriverRepositoryImpl implements DriverRepository {
      * @return El conductor actualizado.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Driver update(Driver driver) {
-        // Primero, se convierte el objeto de dominio Driver a una entidad DriverEntity
-        DriverEntity driverEntity = mapper.toEntity(driver);
-        // Luego, se actualiza la entidad en la base de datos utilizando el repositorio Panache
-        repository.update(driverEntity);
-        // Finalmente, se convierte la entidad actualizada de vuelta a un objeto de dominio Driver
-        return mapper.toDomain(driverEntity);
+        DriverEntity existingEntity = repository.find("documentId", driver.getDocumentId()).firstResult();
+
+        // Solo actualizamos los campos que no son el identificador único de negocio
+        existingEntity.setName(driver.getName());
+        existingEntity.setPhoneNumber(driver.getPhoneNumber());
+        existingEntity.setEmail(driver.getEmail());
+
+        return mapper.toDomain(existingEntity);
     }
 
     /**
