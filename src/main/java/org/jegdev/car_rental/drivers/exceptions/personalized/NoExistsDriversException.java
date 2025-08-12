@@ -1,7 +1,9 @@
 package org.jegdev.car_rental.drivers.exceptions.personalized;
 
-public class NoExistsDriversException extends DriverAlreadyExistsException{
+import org.jegdev.car_rental.drivers.exceptions.base.DriverException;
+
+public class NoExistsDriversException extends DriverException {
     public NoExistsDriversException() {
-        super("No existen conductores disponibles en el sistema");
+        super("DRIVER-003", "No existen conductores disponibles en el sistema");
     }
 }

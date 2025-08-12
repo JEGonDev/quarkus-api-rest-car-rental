@@ -35,8 +35,8 @@ public class DriverRepositoryImpl implements DriverRepository {
      * @return El conductor guardado.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Driver save(Driver driver) {
         // Primero, se convierte el objeto de dominio Driver a una entidad DriverEntity
@@ -53,8 +53,8 @@ public class DriverRepositoryImpl implements DriverRepository {
      * @return Un Optional que contiene el conductor si se encuentra, o un Optional vacío si no.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Optional<Driver> findByDocumentId(String documentId) {
         return repository.find("documentId", documentId) // Utiliza el repositorio Panache para buscar por documentId
@@ -99,8 +99,8 @@ public class DriverRepositoryImpl implements DriverRepository {
      * @param documentId El ID del documento del conductor a eliminar.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public void deleteByDocumentId(String documentId) {
         repository.delete("documentId", documentId);

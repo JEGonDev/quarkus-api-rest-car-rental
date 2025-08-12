@@ -12,16 +12,14 @@ import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jegdev.car_rental.drivers.application.usecase.CreateDriverUseCase;
-import org.jegdev.car_rental.drivers.application.usecase.FindAllDriversUseCase;
-import org.jegdev.car_rental.drivers.application.usecase.FindDriverByDocumentIdUseCase;
-import org.jegdev.car_rental.drivers.application.usecase.UpdateDriverUseCase;
+import org.jegdev.car_rental.drivers.application.usecase.*;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverRequest;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverResponse;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverUpdateRequest;
 import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverDtoMapper;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,6 +33,7 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 public class DriverResource {
 
+    private final DeleteDriverUseCase deleteDriverUseCase;
     private final FindAllDriversUseCase findAllDriversUseCase;
     private final UpdateDriverUseCase updateDriverUseCase;
     private final CreateDriverUseCase createDriverUseCase;
@@ -42,16 +41,46 @@ public class DriverResource {
     private final DriverDtoMapper driverDtoMapper;
 
     @Inject
-    public DriverResource(FindAllDriversUseCase findAllDriversUseCase,
+    public DriverResource(DeleteDriverUseCase deleteDriverUseCase, FindAllDriversUseCase findAllDriversUseCase,
                           UpdateDriverUseCase updateDriverUseCase,
                           CreateDriverUseCase createDriverUseCase,
                           FindDriverByDocumentIdUseCase findDriverByDocumentIdUseCase,
                           DriverDtoMapper driverDtoMapper) {
+        this.deleteDriverUseCase = deleteDriverUseCase;
         this.findAllDriversUseCase = findAllDriversUseCase;
         this.updateDriverUseCase = updateDriverUseCase;
         this.createDriverUseCase = createDriverUseCase;
         this.findDriverByDocumentIdUseCase = findDriverByDocumentIdUseCase;
         this.driverDtoMapper = driverDtoMapper;
+    }
+
+    /**
+     * Endpoint para eliminar un conductor por su ID de documento.
+     * @param documentId El ID del documento del conductor a eliminar.
+     * @return Un código de estado 204 (No Content) si la eliminación fue exitosa.
+     */
+    @DELETE
+    @Path("/{documentId}")
+    @Operation(
+            summary = "Eliminar un conductor",
+            description = "Elimina un conductor existente por su ID de documento."
+    )
+    @APIResponse(
+            responseCode = "204",
+            description = "Conductor eliminado exitosamente"
+    )
+    @APIResponse(
+            responseCode = "404",
+            description = "Conductor no encontrado por el ID de documento proporcionado"
+    )
+    public Response deleteDriver(@Parameter(
+            name = "documentId",
+            description = "El ID del documento del conductor a eliminar",
+            required = true,
+            example = "123456789"
+    ) @PathParam("documentId") String documentId) {
+        deleteDriverUseCase.deleteDriverByDocumentId(documentId);
+        return Response.ok(Collections.singletonMap("message", "Usuario eliminado correctamente")).build();
     }
 
     /**
