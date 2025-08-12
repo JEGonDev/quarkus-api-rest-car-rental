@@ -65,9 +65,18 @@ public class VehicleRepositoryImpl implements VehicleRepository {
                 .map(vehiclePersistenceMapper::toDomain);
     }
 
+    /**
+     * Elimina un vehículo por su matrícula.
+     * Utiliza PanacheMongoRepository para realizar la eliminación.
+     *
+     * @param plate La matrícula del vehículo a eliminar.
+     */
+    @Retry(maxRetries = 3, delay = 200) // Reintenta la operación hasta 3 veces en caso de fallo con un retraso de 200 ms entre intentos
+    @Timeout(200) // Tiempo máximo de espera de 200 ms para la operación
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000, skipOn = MongoWriteException.class) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
     @Override
     public void deleteByPlate(String plate) {
-
+        repository.delete("plate", plate);
     }
 
     /**
