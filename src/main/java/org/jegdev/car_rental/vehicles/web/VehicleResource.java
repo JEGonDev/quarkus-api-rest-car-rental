@@ -8,6 +8,8 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jegdev.car_rental.vehicles.application.usecase.*;
@@ -62,7 +64,14 @@ public class VehicleResource {
         responseCode = "404",
         description = "Vehículo no encontrado por la matrícula proporcionada"
     )
-    public Response deleteVehicleByPlate(@PathParam("plate") String plate) {
+    public Response deleteVehicleByPlate(
+            @Parameter(
+                    description = "Matrícula del vehículo a eliminar",
+                    example = "ABC123",
+                    required = true
+            )
+            @PathParam("plate") String plate
+    ) {
         // Llama al caso de uso para eliminar el vehículo por su matrícula
         deleteVehicleByPlateUseCase.deleteVehicleByPlate(plate);
         // Devuelve una respuesta HTTP con el código 204 (No Content) indicando que la eliminación fue exitosa
@@ -73,6 +82,14 @@ public class VehicleResource {
     @Operation(
         summary = "Crear un nuevo vehículo",
         description = "Crea un nuevo vehículo en el sistema utilizando los datos proporcionados."
+    )
+    @RequestBody(
+        description = "Datos del vehículo a crear",
+        required = true,
+        content = @Content(
+            mediaType = MediaType.APPLICATION_JSON,
+            schema = @Schema(implementation = VehicleRequest.class)
+        )
     )
     @APIResponse(
         responseCode = "201",
@@ -117,7 +134,14 @@ public class VehicleResource {
         responseCode = "404",
         description = "Vehículo no encontrado por la matrícula proporcionada"
     )
-    public Response findVehicleByPlate(@PathParam("plate") String plate) {
+    public Response findVehicleByPlate(
+            @Parameter(
+                    description = "Matrícula del vehículo a buscar",
+                    example = "ABC123",
+                    required = true
+            )
+            @PathParam("plate") String plate
+    ) {
         // Llama al caso de uso para obtener el vehículo por su matrícula
         Vehicle vehicle = getVehicleByPlateUseCase.findVehicleByPlate(plate);
 
@@ -147,7 +171,6 @@ public class VehicleResource {
     )
     public Response findAllVehicles() {
         List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
-
         return Response.ok(responseList).build();
     }
 
@@ -156,6 +179,14 @@ public class VehicleResource {
     @Operation(
             summary = "Actualizar un vehículo",
             description = "Actualiza un vehículo existente utilizando su matrícula como identificador."
+    )
+    @RequestBody(
+            description = "Datos del vehículo a crear",
+            required = true,
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = VehicleRequest.class)
+            )
     )
     @APIResponse(
             responseCode = "200",
@@ -173,7 +204,14 @@ public class VehicleResource {
             responseCode = "400",
             description = "Datos de entrada inválidos"
     )
-    public Response updateVehicleByPlate(@PathParam("plate") String plate, @Valid VehicleRequest vehicleRequest) {
+    public Response updateVehicleByPlate(
+            @Parameter(
+                    description = "Matrícula del vehículo a actualizar",
+                    example = "ABC123",
+                    required = true
+            )
+            @PathParam("plate") String plate,
+            @Valid VehicleRequest vehicleRequest) {
         Vehicle updatedVehicle = updateVehicleByPlateUseCase.updateVehicleByPlate(plate, vehicleRequest); // Actualiza el vehículo utilizando el caso de uso
         VehicleResponse vehicleResponse = vehicleDtoMapper.toResponse(updatedVehicle); // Convierte el vehículo actualizado a un DTO de respuesta
         return Response.ok(vehicleResponse).build(); // Devuelve la respuesta HTTP con el vehículo actualizado
