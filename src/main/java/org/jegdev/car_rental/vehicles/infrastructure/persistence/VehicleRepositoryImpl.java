@@ -70,9 +70,18 @@ public class VehicleRepositoryImpl implements VehicleRepository {
 
     }
 
+    /**
+     * Busca todos los vehículos en la base de datos.
+     * Utiliza PanacheMongoRepository para obtener una lista de todas las entidades VehicleEntity.
+     *
+     * @return Una lista de vehículos del dominio.
+     */
     @Override
     public List<Vehicle> findAll() {
-        return List.of();
+        return repository.findAll()
+                .stream()
+                .map(vehiclePersistenceMapper::toDomain) // Mapea cada entidad a un objeto del dominio
+                .toList(); // Convierte el Stream a una lista
     }
 
     @Override

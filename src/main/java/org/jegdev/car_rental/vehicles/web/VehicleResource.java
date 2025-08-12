@@ -11,11 +11,14 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jegdev.car_rental.vehicles.application.usecase.CreateVehicleUseCase;
+import org.jegdev.car_rental.vehicles.application.usecase.FindAllVehiclesUseCase;
 import org.jegdev.car_rental.vehicles.application.usecase.GetVehicleByPlateUseCase;
 import org.jegdev.car_rental.vehicles.domain.model.Vehicle;
 import org.jegdev.car_rental.vehicles.infrastructure.dto.VehicleRequest;
 import org.jegdev.car_rental.vehicles.infrastructure.dto.VehicleResponse;
 import org.jegdev.car_rental.vehicles.infrastructure.mapper.VehicleDtoMapper;
+
+import java.util.List;
 
 @Path("/vehicles")
 @Tag(name = "Vehicles", description = "Operaciones relacionadas con vehículos")
@@ -23,12 +26,14 @@ import org.jegdev.car_rental.vehicles.infrastructure.mapper.VehicleDtoMapper;
 @Consumes(MediaType.APPLICATION_JSON) // Define que este recurso consume solicitudes en formato JSON
 public class VehicleResource {
 
+    private final FindAllVehiclesUseCase findAllVehiclesUseCase; // Caso de uso para obtener todos los vehículos
     private final CreateVehicleUseCase createVehicleUseCase; // Caso de uso para crear un vehículo
     private final GetVehicleByPlateUseCase getVehicleByPlateUseCase; // Caso de uso para obtener un vehículo por su matrícula
     private final VehicleDtoMapper vehicleDtoMapper; // Mapper para convertir entre entidades y DTOs
 
     @Inject
-    public VehicleResource(CreateVehicleUseCase createVehicleUseCase, GetVehicleByPlateUseCase getVehicleByPlateUseCase, VehicleDtoMapper vehicleDtoMapper) {
+    public VehicleResource(FindAllVehiclesUseCase findAllVehiclesUseCase, CreateVehicleUseCase createVehicleUseCase, GetVehicleByPlateUseCase getVehicleByPlateUseCase, VehicleDtoMapper vehicleDtoMapper) {
+        this.findAllVehiclesUseCase = findAllVehiclesUseCase;
         this.createVehicleUseCase = createVehicleUseCase;
         this.getVehicleByPlateUseCase = getVehicleByPlateUseCase;
         this.vehicleDtoMapper = vehicleDtoMapper;
@@ -91,5 +96,28 @@ public class VehicleResource {
 
         // Devuelve la respuesta HTTP con el vehículo encontrado
         return Response.ok(vehicleResponse).build();
+    }
+
+    @GET
+    @Operation(
+            summary = "Obtener todos los vehículos",
+            description = "Obtiene una lista de todos los vehículos registrados."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Lista de vehículos encontrada exitosamente",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = VehicleResponse.class)
+            )
+    )
+    @APIResponse(
+            responseCode = "404",
+            description = "No se encontraron vehículos"
+    )
+    public Response findAllVehicles() {
+        List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
+
+        return Response.ok(responseList).build();
     }
 }
