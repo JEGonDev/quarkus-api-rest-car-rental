@@ -1,4 +1,4 @@
-package org.jegdev.car_rental.vehicles.web;
+package org.jegdev.car_rental.vehicles.resources;
 
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -11,7 +11,9 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.logging.Logger;
 import org.jegdev.car_rental.vehicles.application.usecase.*;
 import org.jegdev.car_rental.vehicles.domain.model.Vehicle;
 import org.jegdev.car_rental.vehicles.infrastructure.dto.VehicleRequest;
@@ -26,6 +28,8 @@ import java.util.List;
 @Produces(MediaType.APPLICATION_JSON) // Define que este recurso produce respuestas en formato JSON
 @Consumes(MediaType.APPLICATION_JSON) // Define que este recurso consume solicitudes en formato JSON
 public class VehicleResource {
+
+    private static final Logger LOG = Logger.getLogger(VehicleResource.class.getName()); // Logger para registrar información y errores
 
     private final UpdateVehicleByPlateUseCase updateVehicleByPlateUseCase; // Caso de uso para actualizar un vehículo por su matrícula
     private final DeleteVehicleByPlateUseCase deleteVehicleByPlateUseCase; // Caso de uso para eliminar un vehículo por su matrícula
@@ -53,63 +57,81 @@ public class VehicleResource {
     @DELETE
     @Path("/{plate}")
     @Operation(
-        summary = "Eliminar vehículo por matrícula",
-        description = "Elimina un vehículo del sistema utilizando su matrícula."
+            summary = "Eliminar vehículo por matrícula",
+            description = "Elimina un vehículo del sistema utilizando su matrícula. " +
+                    "Esta operación es irreversible."
     )
-    @APIResponse(
-        responseCode = "204",
-        description = "Vehículo eliminado exitosamente"
-    )
-    @APIResponse(
-        responseCode = "404",
-        description = "Vehículo no encontrado por la matrícula proporcionada"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Vehículo eliminado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(example = "{\"message\": \"Vehículo eliminado correctamente\"}")
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Vehículo no encontrado por la matrícula proporcionada"
+            )
+    })
     public Response deleteVehicleByPlate(
             @Parameter(
                     description = "Matrícula del vehículo a eliminar",
-                    example = "ABC123",
+                    example = "ABC-123",
                     required = true
             )
             @PathParam("plate") String plate
     ) {
         // Llama al caso de uso para eliminar el vehículo por su matrícula
+        LOG.infof("Recibida petición DELETE para eliminar vehículo con matrícula: %s", plate);
         deleteVehicleByPlateUseCase.deleteVehicleByPlate(plate);
-        // Devuelve una respuesta HTTP con el código 204 (No Content) indicando que la eliminación fue exitosa
+
+        // Devuelve una respuesta HTTP con el código 200 (No Content) indicando que la eliminación fue exitosa
+        LOG.infof("Vehículo con matrícula: %s eliminado exitosamente. Devolviendo 200 OK.", plate);
         return Response.ok(Collections.singletonMap("message", "Vehículo eliminado correctamente")).build();
     }
 
     @POST
     @Operation(
-        summary = "Crear un nuevo vehículo",
-        description = "Crea un nuevo vehículo en el sistema utilizando los datos proporcionados."
+            summary = "Crear un nuevo vehículo",
+            description = "Crea un nuevo vehículo en el sistema utilizando los datos proporcionados. " +
+                    "El campo 'plate' debe ser único en el sistema."
     )
     @RequestBody(
-        description = "Datos del vehículo a crear",
-        required = true,
-        content = @Content(
-            mediaType = MediaType.APPLICATION_JSON,
-            schema = @Schema(implementation = VehicleRequest.class)
-        )
+            description = "Objeto con los datos del nuevo vehículo a crear.",
+            required = true,
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = VehicleRequest.class)
+            )
     )
-    @APIResponse(
-        responseCode = "201",
-        description = "Vehículo creado exitosamente",
-        content = @Content(
-            mediaType = MediaType.APPLICATION_JSON,
-            schema = @Schema(implementation = VehicleResponse.class)
-        )
-    )
-    @APIResponse(
-        responseCode = "400",
-        description = "Datos de entrada inválidos"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "201",
+                    description = "Vehículo creado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos o formato incorrecto"
+            ),
+            @APIResponse(
+                    responseCode = "409",
+                    description = "Ya existe un vehículo con la misma matrícula"
+            )
+    })
     public Response createVehicle(@Valid VehicleRequest vehicleRequest) {
+        LOG.infof("Recibida petición POST para crear un nuevo vehículo con datos: %s", vehicleRequest);
         // Convierte el DTO de solicitud a un objeto de dominio Vehicle
         Vehicle createdVehicle = createVehicleUseCase.createVehicle(vehicleRequest);
 
         // Convierte el vehículo creado a un DTO de respuesta
         VehicleResponse vehicleResponse = vehicleDtoMapper.toResponse(createdVehicle);
-
+        LOG.infof("Vehículo con matrícula: %s creado exitosamente. Devolviendo 201 Created.", vehicleResponse);
         // Devuelve la respuesta HTTP con el código 201 (Creado) y el vehículo creado
         return Response.status(Response.Status.CREATED)
                 .entity(vehicleResponse)
@@ -119,35 +141,38 @@ public class VehicleResource {
     @GET
     @Path("/{plate}")
     @Operation(
-        summary = "Obtener vehículo por matrícula",
-        description = "Obtiene un vehículo específico utilizando su matrícula."
+            summary = "Obtener vehículo por matrícula",
+            description = "Busca y devuelve un vehículo específico utilizando su matrícula como identificador."
     )
-    @APIResponse(
-        responseCode = "200",
-        description = "Vehículo encontrado exitosamente",
-        content = @Content(
-            mediaType = MediaType.APPLICATION_JSON,
-            schema = @Schema(implementation = VehicleResponse.class)
-        )
-    )
-    @APIResponse(
-        responseCode = "404",
-        description = "Vehículo no encontrado por la matrícula proporcionada"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Vehículo encontrado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Vehículo no encontrado por la matrícula proporcionada"
+            )
+    })
     public Response findVehicleByPlate(
             @Parameter(
                     description = "Matrícula del vehículo a buscar",
-                    example = "ABC123",
+                    example = "ABC-123",
                     required = true
             )
             @PathParam("plate") String plate
     ) {
+        LOG.infof("Recibida petición GET para buscar vehículo con matrícula: %s", plate);
         // Llama al caso de uso para obtener el vehículo por su matrícula
         Vehicle vehicle = getVehicleByPlateUseCase.findVehicleByPlate(plate);
 
         // Convierte el vehículo a un DTO de respuesta
         VehicleResponse vehicleResponse = vehicleDtoMapper.toResponse(vehicle);
-
+        LOG.infof("Vehículo con matrícula: %s encontrado exitosamente. Devolviendo 200 OK.", vehicleResponse);
         // Devuelve la respuesta HTTP con el vehículo encontrado
         return Response.ok(vehicleResponse).build();
     }
@@ -155,22 +180,27 @@ public class VehicleResource {
     @GET
     @Operation(
             summary = "Obtener todos los vehículos",
-            description = "Obtiene una lista de todos los vehículos registrados."
+            description = "Obtiene una lista completa de todos los vehículos registrados en el sistema."
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Lista de vehículos encontrada exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = VehicleResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Lista de vehículos encontrada exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "No se encontraron vehículos"
             )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "No se encontraron vehículos"
-    )
+    })
     public Response findAllVehicles() {
+        LOG.info("Recibida petición GET para obtener todos los vehículos.");
         List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
+
+        LOG.infof("Se encontraron %d vehículos.", responseList.size());
         return Response.ok(responseList).build();
     }
 
@@ -178,32 +208,35 @@ public class VehicleResource {
     @Path("/{plate}")
     @Operation(
             summary = "Actualizar un vehículo",
-            description = "Actualiza un vehículo existente utilizando su matrícula como identificador."
+            description = "Actualiza un vehículo existente utilizando su matrícula como identificador. " +
+                    "El cuerpo de la solicitud debe contener los datos completos del vehículo."
     )
     @RequestBody(
-            description = "Datos del vehículo a crear",
+            description = "Objeto con los nuevos datos del vehículo. Todos los campos son obligatorios para la actualización completa.",
             required = true,
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(implementation = VehicleRequest.class)
             )
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Vehículo actualizado exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = VehicleResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Vehículo actualizado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Vehículo no encontrado por la matrícula proporcionada"
+            ),
+            @APIResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos o formato incorrecto"
             )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "Vehículo no encontrado"
-    )
-    @APIResponse(
-            responseCode = "400",
-            description = "Datos de entrada inválidos"
-    )
+    })
     public Response updateVehicleByPlate(
             @Parameter(
                     description = "Matrícula del vehículo a actualizar",
@@ -212,8 +245,13 @@ public class VehicleResource {
             )
             @PathParam("plate") String plate,
             @Valid VehicleRequest vehicleRequest) {
+        LOG.infof("Recibida petición PUT para actualizar vehículo con matrícula: %s", plate);
+        LOG.infof("Datos del vehículo a actualizar: %s", vehicleRequest);
         Vehicle updatedVehicle = updateVehicleByPlateUseCase.updateVehicleByPlate(plate, vehicleRequest); // Actualiza el vehículo utilizando el caso de uso
+
         VehicleResponse vehicleResponse = vehicleDtoMapper.toResponse(updatedVehicle); // Convierte el vehículo actualizado a un DTO de respuesta
+        LOG.infof("Vehículo con matrícula: %s actualizado exitosamente. Devolviendo 200 OK.", plate);
+        LOG.infof("Respuesta del vehículo actualizado: %s", vehicleResponse);
         return Response.ok(vehicleResponse).build(); // Devuelve la respuesta HTTP con el vehículo actualizado
     }
 }

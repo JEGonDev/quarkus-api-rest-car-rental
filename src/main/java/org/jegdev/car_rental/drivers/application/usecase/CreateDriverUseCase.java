@@ -2,6 +2,7 @@ package org.jegdev.car_rental.drivers.application.usecase;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.domain.repository.DriverRepository;
 import org.jegdev.car_rental.drivers.exceptions.personalized.DriverAlreadyExistsException;
@@ -17,6 +18,8 @@ import java.util.Optional;
  */
 @ApplicationScoped
 public class CreateDriverUseCase {
+
+    private static final Logger LOG = Logger.getLogger(CreateDriverUseCase.class.getName());
 
     private final DriverRepository driverRepository;
     private final DriverDtoMapper driverDtoMapper;
@@ -35,14 +38,22 @@ public class CreateDriverUseCase {
      * @return La entidad de dominio del conductor creado.
      */
     public Driver createDriver(DriverRequest driverRequest) {
+        LOG.infof("Iniciando caso de uso para crear un nuevo conductor con documento ID: %s", driverRequest.getDocumentId());
+
         // Paso 1: Validar que el ID del documento no exista.
+        LOG.debugf("Paso 1: Validando que el documento ID %s no exista.", driverRequest.getDocumentId());
         validateDocumentIdDoesNotExist(driverRequest.getDocumentId());
 
         // Paso 2: Mapear el DTO a la entidad de dominio.
+        LOG.debugf("Paso 2: Mapeando DriverRequest a entidad de dominio para el documento ID: %s", driverRequest.getDocumentId());
         Driver driverToSave = mapToDomain(driverRequest);
 
         // Paso 3: Guardar el conductor en la base de datos.
-        return saveDriver(driverToSave);
+        LOG.debugf("Paso 3: Guardando conductor con documento ID: %s en el repositorio.", driverToSave.getDocumentId());
+        Driver savedDriver = saveDriver(driverToSave);
+
+        LOG.infof("Caso de uso para crear conductor finalizado exitosamente. Conductor creado con ID: %s", savedDriver.getId());
+        return savedDriver;
     }
 
     /**
@@ -55,8 +66,10 @@ public class CreateDriverUseCase {
     private void validateDocumentIdDoesNotExist(String documentId) {
         Optional<Driver> existingDriver = driverRepository.findByDocumentId(documentId);
         if (existingDriver.isPresent()) {
+            LOG.warnf("Intento de creación fallido: Ya existe un conductor con el documento ID: %s", documentId);
             throw new DriverAlreadyExistsException(documentId);
         }
+        LOG.debugf("Validación exitosa: No existe un conductor con el documento ID: %s", documentId);
     }
 
     /**

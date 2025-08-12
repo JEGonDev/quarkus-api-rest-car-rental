@@ -1,6 +1,8 @@
 package org.jegdev.car_rental.vehicles.application.usecase;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 import org.jegdev.car_rental.vehicles.domain.model.Vehicle;
 import org.jegdev.car_rental.vehicles.domain.repository.VehicleRepository;
 import org.jegdev.car_rental.vehicles.exceptions.personalized.VehicleAlreadyExistsException;
@@ -12,6 +14,8 @@ import java.util.Optional;
 @ApplicationScoped // Se crea una instancia unica para todo el ciclo de vida de la App
 public class CreateVehicleUseCase {
 
+    private final static Logger LOG = Logger.getLogger(CreateVehicleUseCase.class.getName());
+
     private final VehicleRepository vehicleRepository; // Repositorio para acceder a los vehículos
     private final VehicleDtoMapper vehicleDtoMapper; // Mapper para convertir DTO a dominio
 
@@ -20,6 +24,7 @@ public class CreateVehicleUseCase {
      *
      * @param vehicleRepository Repositorio de vehículos para acceder a los datos.
      */
+    @Inject
     public CreateVehicleUseCase(VehicleRepository vehicleRepository, VehicleDtoMapper vehicleDtoMapper) {
         this.vehicleRepository = vehicleRepository;
         this.vehicleDtoMapper = vehicleDtoMapper;
@@ -33,12 +38,19 @@ public class CreateVehicleUseCase {
      * @return La entidad de dominio del vehículo creado.
      */
     public Vehicle createVehicle(VehicleRequest vehicleRequest) {
+        LOG.infof("Iniciando caso de uso para crear un nuevo vehículo con placa: %s", vehicleRequest.getPlate());
+
         // Paso 1: Validar que la placa no exista
         validatePlateDoesNotExist(vehicleRequest.getPlate());
+
         // Paso 2: Mapear el DTO a la entidad de dominio
         Vehicle vehicleToSave = mapToDomain(vehicleRequest);
+
         // Paso 3: Guardar el vehículo en la base de datos
-        return saveVehicle(vehicleToSave);
+        Vehicle savedVehicle = saveVehicle(vehicleToSave);
+
+        LOG.infof("Vehículo con placa: %s creado exitosamente con ID: %s", savedVehicle.getPlate(), savedVehicle.getId());
+        return savedVehicle;
     }
 
     /**
@@ -49,10 +61,13 @@ public class CreateVehicleUseCase {
      * @throws VehicleAlreadyExistsException si ya existe un vehículo con esa placa.
      */
     private void validatePlateDoesNotExist(String plate) {
+        LOG.debugf("Validando si la placa %s ya existe en el sistema.", plate);
         Optional<Vehicle> existingVehicle = vehicleRepository.findByPlate(plate);
         if (existingVehicle.isPresent()) {
+            LOG.warnf("La placa %s ya existe. Lanzando excepción de VehicleAlreadyExistsException.", plate);
             throw new VehicleAlreadyExistsException(plate);
         }
+        LOG.debugf("La placa %s está disponible.", plate);
     }
 
     /**
@@ -62,6 +77,7 @@ public class CreateVehicleUseCase {
      * @return La entidad de dominio Vehicle.
      */
     private Vehicle mapToDomain(VehicleRequest vehicleRequest) {
+        LOG.debugf("Mapeando el DTO de solicitud a una entidad de dominio.");
         return vehicleDtoMapper.toDomain(vehicleRequest);
     }
 
@@ -72,6 +88,7 @@ public class CreateVehicleUseCase {
      * @return El vehículo guardado con su ID asignado.
      */
     private Vehicle saveVehicle(Vehicle vehicle) {
+        LOG.debugf("Guardando el vehículo en el repositorio.");
         return vehicleRepository.save(vehicle);
     }
 }

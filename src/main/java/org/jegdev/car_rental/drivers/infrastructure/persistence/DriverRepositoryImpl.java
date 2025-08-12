@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.faulttolerance.Timeout;
+import org.jboss.logging.Logger;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.domain.repository.DriverRepository;
 import org.jegdev.car_rental.drivers.infrastructure.entity.DriverEntity;
@@ -19,6 +20,8 @@ import java.util.Optional;
  */
 @ApplicationScoped
 public class DriverRepositoryImpl implements DriverRepository {
+
+    private static final Logger LOG = Logger.getLogger(DriverRepositoryImpl.class.getName());
 
     private final DriverPanacheRepository repository;
     private final DriverPersistenceMapper mapper;
@@ -39,10 +42,14 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Driver save(Driver driver) {
+        LOG.infof("Iniciando la operación de guardado para el conductor con documento: %s", driver.getDocumentId());
+        LOG.infof("Datos del conductor a guardar: %s", driver);
         // Primero, se convierte el objeto de dominio Driver a una entidad DriverEntity
         DriverEntity driverEntity = mapper.toEntity(driver);
         // Luego, se persiste la entidad en la base de datos utilizando el repositorio Panache
         repository.persist(driverEntity);
+        LOG.infof("Conductor con documento '%s' guardado exitosamente en la base de datos.", driver.getDocumentId());
+        LOG.infof("Datos del conductor guardado: %s", driverEntity);
         // Finalmente, se convierte la entidad persistida de vuelta a un objeto de dominio Driver
         return mapper.toDomain(driverEntity);
     }
@@ -57,9 +64,17 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Optional<Driver> findByDocumentId(String documentId) {
-        return repository.find("documentId", documentId) // Utiliza el repositorio Panache para buscar por documentId
-                .firstResultOptional() // Obtiene el primer resultado como un Optional
-                .map(mapper::toDomain); // Convierte la entidad DriverEntity a un objeto de dominio Driver
+        LOG.infof("Buscando conductor por documento: %s", documentId);
+        Optional<DriverEntity> optionalEntity = repository.find("documentId", documentId)
+                .firstResultOptional();
+
+        if (optionalEntity.isPresent()) {
+            LOG.debugf("Conductor con documento '%s' encontrado en la base de datos.", documentId);
+            return optionalEntity.map(mapper::toDomain);
+        } else {
+            LOG.warnf("No se encontró ningún conductor con documento: %s.", documentId);
+            return Optional.empty();
+        }
     }
 
     /**
@@ -68,10 +83,13 @@ public class DriverRepositoryImpl implements DriverRepository {
      */
     @Override
     public List<Driver> findAll() {
-        return repository.findAll() // Utiliza el repositorio Panache para obtener todos los conductores
-                .stream() // Convierte el resultado a un Stream
-                .map(mapper::toDomain) // Mapea cada entidad DriverEntity a un objeto de dominio Driver
-                .toList(); // Convierte el Stream de objetos Driver a una lista
+        LOG.info("Iniciando la búsqueda de todos los conductores.");
+        List<Driver> drivers = repository.findAll()
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+        LOG.infof("Se encontraron %d conductores en total.", drivers.size());
+        return drivers;
     }
 
     /**
@@ -84,14 +102,25 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public Driver update(Driver driver) {
+        LOG.infof("Iniciando la actualización para el conductor con documento: %s", driver.getDocumentId());
+        LOG.infof("Datos del conductor a actualizar: %s", driver);
+
         DriverEntity existingEntity = repository.find("documentId", driver.getDocumentId()).firstResult();
 
-        // Solo actualizamos los campos que no son el identificador único de negocio
-        existingEntity.setName(driver.getName());
-        existingEntity.setPhoneNumber(driver.getPhoneNumber());
-        existingEntity.setEmail(driver.getEmail());
-
-        return mapper.toDomain(existingEntity);
+        if (existingEntity != null) {
+            LOG.debugf("Actualizando campos del conductor con documento: %s", driver.getDocumentId());
+            // Solo actualizamos los campos que no son el identificador único de negocio
+            existingEntity.setName(driver.getName());
+            existingEntity.setPhoneNumber(driver.getPhoneNumber());
+            existingEntity.setEmail(driver.getEmail());
+            LOG.infof("Conductor con documento '%s' actualizado exitosamente.", driver.getDocumentId());
+            LOG.infof("Datos actualizados: %s", existingEntity);
+            return mapper.toDomain(existingEntity);
+        } else {
+            LOG.warnf("No se pudo encontrar el conductor con documento '%s' para actualizar.", driver.getDocumentId());
+            // En un caso real, podrías lanzar una excepción aquí.
+            return null;
+        }
     }
 
     /**
@@ -103,6 +132,12 @@ public class DriverRepositoryImpl implements DriverRepository {
     @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public void deleteByDocumentId(String documentId) {
-        repository.delete("documentId", documentId);
+        LOG.infof("Iniciando la eliminación del conductor con documento: %s", documentId);
+        long deletedCount = repository.delete("documentId", documentId);
+        if (deletedCount > 0) {
+            LOG.infof("Conductor con documento '%s' eliminado exitosamente. Total de registros eliminados: %d", documentId, deletedCount);
+        } else {
+            LOG.warnf("No se encontró ningún conductor con documento '%s' para eliminar. No se realizaron cambios.", documentId);
+        }
     }
 }
