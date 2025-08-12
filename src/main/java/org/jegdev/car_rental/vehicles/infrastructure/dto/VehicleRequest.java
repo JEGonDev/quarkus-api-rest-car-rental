@@ -23,7 +23,7 @@ public class VehicleRequest {
 
     @Schema(description = "Marca del vehículo", example = "Toyota", required = true)
     @NotBlank(message = "La marca del vehículo es obligatoria.")
-    private String brand; // Marca del vehículo
+    private String brand; // Marca del vehículos
 
     @Schema(description = "Modelo del vehículo", example = "Corolla", required = true)
     @NotBlank(message = "El modelo del vehículo es obligatorio.")

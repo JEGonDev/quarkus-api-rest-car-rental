@@ -1,6 +1,6 @@
 package org.jegdev.car_rental.vehicles.infrastructure.persistence;
 
-import io.quarkus.mongodb.panache.PanacheMongoRepository;
+import com.mongodb.MongoWriteException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
@@ -57,7 +57,7 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      */
     @Retry(maxRetries = 3, delay = 200) // Reintenta la operación hasta 3 veces en caso de fallo con un retraso de 200 ms entre intentos
     @Timeout(200) // Tiempo máximo de espera de 200 ms para la operación
-    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000, skipOn = MongoWriteException.class) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
     @Override
     public Optional<Vehicle> findByPlate(String plate) {
         return repository.find("plate", plate)
