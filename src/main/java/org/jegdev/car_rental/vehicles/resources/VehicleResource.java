@@ -200,7 +200,7 @@ public class VehicleResource {
         LOG.info("Recibida petición GET para obtener todos los vehículos.");
         List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
 
-        LOG.infof("Lista de %d vehículos obtenida exitosamente. Devolviendo 200 OK.", responseList);
+        LOG.infof("Se encontraron %d vehículos.", responseList.size());
         return Response.ok(responseList).build();
     }
 
