@@ -2,6 +2,7 @@ package org.jegdev.car_rental.vehicles.application.usecase;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 import org.jegdev.car_rental.vehicles.domain.model.Vehicle;
 import org.jegdev.car_rental.vehicles.domain.repository.VehicleRepository;
 import org.jegdev.car_rental.vehicles.exceptions.personalized.VehicleNotFoundByPlateException;
@@ -9,6 +10,8 @@ import org.jegdev.car_rental.vehicles.infrastructure.dto.VehicleRequest;
 
 @ApplicationScoped
 public class UpdateVehicleByPlateUseCase {
+
+    private final static Logger LOG = Logger.getLogger(UpdateVehicleByPlateUseCase.class.getName());
 
     private final VehicleRepository vehicleRepository;
 
@@ -26,14 +29,21 @@ public class UpdateVehicleByPlateUseCase {
      * @throws VehicleNotFoundByPlateException si no se encuentra un vehículo con la matrícula especificada.
      */
     public Vehicle updateVehicleByPlate(String plate, VehicleRequest vehicleRequest) {
+        LOG.infof("Iniciando la actualización del vehículo con matrícula: %s", plate);
+
         // 1. Encuentra el vehículo existente. Lanza una excepción si no existe.
         Vehicle existingVehicle = findExistingVehicle(plate);
+        LOG.debugf("Vehículo existente con matrícula '%s' encontrado.", plate);
 
         // 2. Actualiza los campos del vehículo existente con los datos del request.
         updateVehicleFields(existingVehicle, vehicleRequest);
+        LOG.debugf("Campos del vehículo con matrícula '%s' actualizados en memoria.", plate);
 
         // 3. Guarda el vehículo modificado en el repositorio.
-        return vehicleRepository.update(existingVehicle);
+        Vehicle updatedVehicle = vehicleRepository.update(existingVehicle);
+        LOG.infof("Vehículo con matrícula '%s' actualizado y guardado exitosamente.", plate);
+
+        return updatedVehicle;
     }
 
     /**
@@ -45,7 +55,10 @@ public class UpdateVehicleByPlateUseCase {
      */
     private Vehicle findExistingVehicle(String plate) {
         return vehicleRepository.findByPlate(plate)
-                .orElseThrow(() -> new VehicleNotFoundByPlateException(plate));
+                .orElseThrow(() -> {
+                    LOG.warnf("No se encontró ningún vehículo con la matrícula: %s. No se pudo realizar la actualización.", plate);
+                    return new VehicleNotFoundByPlateException(plate);
+                });
     }
 
     /**
@@ -56,6 +69,8 @@ public class UpdateVehicleByPlateUseCase {
      */
     private void updateVehicleFields(Vehicle vehicle, VehicleRequest vehicleRequest) {
         // Se actualizan solo los campos que pueden ser modificados.
+        // Asumiendo que el DTO de entrada ya contiene la placa para la actualización
+        // si la placa no se va a cambiar.
         vehicle.setType(vehicleRequest.getType());
         vehicle.setBrand(vehicleRequest.getBrand());
         vehicle.setModel(vehicleRequest.getModel());
