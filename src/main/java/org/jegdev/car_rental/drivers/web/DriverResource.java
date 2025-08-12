@@ -14,6 +14,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jegdev.car_rental.drivers.application.usecase.CreateDriverUseCase;
 import org.jegdev.car_rental.drivers.application.usecase.FindDriverByDocumentIdUseCase;
+import org.jegdev.car_rental.drivers.application.usecase.UpdateDriverUseCase;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverRequest;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverResponse;
@@ -29,17 +30,68 @@ import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverDtoMapper;
 @Consumes(MediaType.APPLICATION_JSON)
 public class DriverResource {
 
+    private final UpdateDriverUseCase updateDriverUseCase;
     private final CreateDriverUseCase createDriverUseCase;
     private final FindDriverByDocumentIdUseCase findDriverByDocumentIdUseCase;
     private final DriverDtoMapper driverDtoMapper;
 
     @Inject
-    public DriverResource(CreateDriverUseCase createDriverUseCase,
+    public DriverResource(UpdateDriverUseCase updateDriverUseCase,
+                          CreateDriverUseCase createDriverUseCase,
                           FindDriverByDocumentIdUseCase findDriverByDocumentIdUseCase,
                           DriverDtoMapper driverDtoMapper) {
+        this.updateDriverUseCase = updateDriverUseCase;
         this.createDriverUseCase = createDriverUseCase;
         this.findDriverByDocumentIdUseCase = findDriverByDocumentIdUseCase;
         this.driverDtoMapper = driverDtoMapper;
+    }
+
+    /**
+     * Endpoint para actualizar un conductor existente por su ID de documento.
+     * @param documentId El ID del documento del conductor a actualizar.
+     * @param driverRequest DTO con los nuevos datos del conductor.
+     * @return El conductor actualizado con el código de estado 200 (OK).
+     */
+    @PUT
+    @Path("/{documentId}")
+    @Operation(
+            summary = "Actualizar un conductor",
+            description = "Actualiza un conductor existente utilizando su ID de documento como identificador."
+    )
+    @RequestBody(
+            description = "Datos del conductor a actualizar",
+            required = true,
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = DriverRequest.class)
+            )
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Conductor actualizado exitosamente",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = DriverResponse.class)
+            )
+    )
+    @APIResponse(
+            responseCode = "404",
+            description = "Conductor no encontrado"
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Datos de entrada inválidos"
+    )
+    public Response updateDriverByDocumentId(@Parameter(
+                                                     name = "documentId",
+                                                     description = "El ID del documento del conductor a buscar",
+                                                     required = true,
+                                                     example = "123456789"
+                                             ) @PathParam("documentId") String documentId,
+                                             @Valid DriverRequest driverRequest) {
+        Driver updatedDriver = updateDriverUseCase.updateDriverByDocumentId(documentId, driverRequest);
+        DriverResponse driverResponse = driverDtoMapper.toResponse(updatedDriver);
+        return Response.ok(driverResponse).build();
     }
 
     /**
