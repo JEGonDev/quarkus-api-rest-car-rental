@@ -10,10 +10,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jegdev.car_rental.vehicles.application.usecase.CreateVehicleUseCase;
-import org.jegdev.car_rental.vehicles.application.usecase.DeleteVehicleByPlateUseCase;
-import org.jegdev.car_rental.vehicles.application.usecase.FindAllVehiclesUseCase;
-import org.jegdev.car_rental.vehicles.application.usecase.GetVehicleByPlateUseCase;
+import org.jegdev.car_rental.vehicles.application.usecase.*;
 import org.jegdev.car_rental.vehicles.domain.model.Vehicle;
 import org.jegdev.car_rental.vehicles.infrastructure.dto.VehicleRequest;
 import org.jegdev.car_rental.vehicles.infrastructure.dto.VehicleResponse;
@@ -28,6 +25,7 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON) // Define que este recurso consume solicitudes en formato JSON
 public class VehicleResource {
 
+    private final UpdateVehicleByPlateUseCase updateVehicleByPlateUseCase; // Caso de uso para actualizar un vehículo por su matrícula
     private final DeleteVehicleByPlateUseCase deleteVehicleByPlateUseCase; // Caso de uso para eliminar un vehículo por su matrícula
     private final FindAllVehiclesUseCase findAllVehiclesUseCase; // Caso de uso para obtener todos los vehículos
     private final CreateVehicleUseCase createVehicleUseCase; // Caso de uso para crear un vehículo
@@ -35,7 +33,14 @@ public class VehicleResource {
     private final VehicleDtoMapper vehicleDtoMapper; // Mapper para convertir entre entidades y DTOs
 
     @Inject
-    public VehicleResource(DeleteVehicleByPlateUseCase deleteVehicleByPlateUseCase, FindAllVehiclesUseCase findAllVehiclesUseCase, CreateVehicleUseCase createVehicleUseCase, GetVehicleByPlateUseCase getVehicleByPlateUseCase, VehicleDtoMapper vehicleDtoMapper) {
+    public VehicleResource(
+            UpdateVehicleByPlateUseCase updateVehicleByPlateUseCase, DeleteVehicleByPlateUseCase deleteVehicleByPlateUseCase,
+            FindAllVehiclesUseCase findAllVehiclesUseCase,
+            CreateVehicleUseCase createVehicleUseCase,
+            GetVehicleByPlateUseCase getVehicleByPlateUseCase,
+            VehicleDtoMapper vehicleDtoMapper
+    ) {
+        this.updateVehicleByPlateUseCase = updateVehicleByPlateUseCase;
         this.deleteVehicleByPlateUseCase = deleteVehicleByPlateUseCase;
         this.findAllVehiclesUseCase = findAllVehiclesUseCase;
         this.createVehicleUseCase = createVehicleUseCase;
@@ -144,5 +149,33 @@ public class VehicleResource {
         List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
 
         return Response.ok(responseList).build();
+    }
+
+    @PUT
+    @Path("/{plate}")
+    @Operation(
+            summary = "Actualizar un vehículo",
+            description = "Actualiza un vehículo existente utilizando su matrícula como identificador."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Vehículo actualizado exitosamente",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = VehicleResponse.class)
+            )
+    )
+    @APIResponse(
+            responseCode = "404",
+            description = "Vehículo no encontrado"
+    )
+    @APIResponse(
+            responseCode = "400",
+            description = "Datos de entrada inválidos"
+    )
+    public Response updateVehicleByPlate(@PathParam("plate") String plate, @Valid VehicleRequest vehicleRequest) {
+        Vehicle updatedVehicle = updateVehicleByPlateUseCase.updateVehicleByPlate(plate, vehicleRequest); // Actualiza el vehículo utilizando el caso de uso
+        VehicleResponse vehicleResponse = vehicleDtoMapper.toResponse(updatedVehicle); // Convierte el vehículo actualizado a un DTO de respuesta
+        return Response.ok(vehicleResponse).build(); // Devuelve la respuesta HTTP con el vehículo actualizado
     }
 }

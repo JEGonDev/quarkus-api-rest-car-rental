@@ -3,6 +3,7 @@ package org.jegdev.car_rental.vehicles.infrastructure.persistence;
 import com.mongodb.MongoWriteException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.faulttolerance.Timeout;
@@ -73,7 +74,7 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      */
     @Retry(maxRetries = 3, delay = 200) // Reintenta la operación hasta 3 veces en caso de fallo con un retraso de 200 ms entre intentos
     @Timeout(200) // Tiempo máximo de espera de 200 ms para la operación
-    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000, skipOn = MongoWriteException.class) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000) // Abre el circuito si el 75% de las últimas 4 llamadas fallan, con un retraso de 1 segundo antes de intentar cerrar el circuito
     @Override
     public void deleteByPlate(String plate) {
         repository.delete("plate", plate);
@@ -85,6 +86,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      *
      * @return Una lista de vehículos del dominio.
      */
+    @Retry(maxRetries = 3, delay = 200) // Reintenta la operación hasta 3 veces en caso de fallo con un retraso de 200 ms entre intentos
+    @Timeout(200) // Tiempo máximo de espera de 200 ms para la operación
     @Override
     public List<Vehicle> findAll() {
         return repository.findAll()
@@ -93,8 +96,25 @@ public class VehicleRepositoryImpl implements VehicleRepository {
                 .toList(); // Convierte el Stream a una lista
     }
 
+    /**
+     * Actualiza un vehículo en la base de datos.
+     * Utiliza PanacheMongoRepository para persistir los cambios en la entidad.
+     *
+     * @param vehicle El vehículo del dominio con los datos actualizados.
+     * @return El vehículo actualizado convertido de vuelta al dominio.
+     */
+    @Retry(maxRetries = 3, delay = 200)
+    @Timeout(200)
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000, skipOn = MongoWriteException.class)
     @Override
     public Vehicle update(Vehicle vehicle) {
-        return null;
+        // 1. Mapeamos el objeto de dominio con los datos actualizados a una entidad.
+        VehicleEntity vehicleEntity = vehiclePersistenceMapper.toEntity(vehicle);
+
+        // 2. Persistimos la entidad actualizada en la base de datos.
+        repository.update(vehicleEntity);
+
+        // 3. Devolvemos el vehículo actualizado.
+        return vehiclePersistenceMapper.toDomain(vehicleEntity);
     }
 }
