@@ -11,6 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.logging.Logger;
 import org.jegdev.car_rental.vehicles.application.usecase.*;
@@ -56,21 +57,28 @@ public class VehicleResource {
     @DELETE
     @Path("/{plate}")
     @Operation(
-        summary = "Eliminar vehículo por matrícula",
-        description = "Elimina un vehículo del sistema utilizando su matrícula."
+            summary = "Eliminar vehículo por matrícula",
+            description = "Elimina un vehículo del sistema utilizando su matrícula. " +
+                    "Esta operación es irreversible."
     )
-    @APIResponse(
-        responseCode = "204",
-        description = "Vehículo eliminado exitosamente"
-    )
-    @APIResponse(
-        responseCode = "404",
-        description = "Vehículo no encontrado por la matrícula proporcionada"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Vehículo eliminado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(example = "{\"message\": \"Vehículo eliminado correctamente\"}")
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Vehículo no encontrado por la matrícula proporcionada"
+            )
+    })
     public Response deleteVehicleByPlate(
             @Parameter(
                     description = "Matrícula del vehículo a eliminar",
-                    example = "ABC123",
+                    example = "ABC-123",
                     required = true
             )
             @PathParam("plate") String plate
@@ -86,29 +94,36 @@ public class VehicleResource {
 
     @POST
     @Operation(
-        summary = "Crear un nuevo vehículo",
-        description = "Crea un nuevo vehículo en el sistema utilizando los datos proporcionados."
+            summary = "Crear un nuevo vehículo",
+            description = "Crea un nuevo vehículo en el sistema utilizando los datos proporcionados. " +
+                    "El campo 'plate' debe ser único en el sistema."
     )
     @RequestBody(
-        description = "Datos del vehículo a crear",
-        required = true,
-        content = @Content(
-            mediaType = MediaType.APPLICATION_JSON,
-            schema = @Schema(implementation = VehicleRequest.class)
-        )
+            description = "Objeto con los datos del nuevo vehículo a crear.",
+            required = true,
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = VehicleRequest.class)
+            )
     )
-    @APIResponse(
-        responseCode = "201",
-        description = "Vehículo creado exitosamente",
-        content = @Content(
-            mediaType = MediaType.APPLICATION_JSON,
-            schema = @Schema(implementation = VehicleResponse.class)
-        )
-    )
-    @APIResponse(
-        responseCode = "400",
-        description = "Datos de entrada inválidos"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "201",
+                    description = "Vehículo creado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos o formato incorrecto"
+            ),
+            @APIResponse(
+                    responseCode = "409",
+                    description = "Ya existe un vehículo con la misma matrícula"
+            )
+    })
     public Response createVehicle(@Valid VehicleRequest vehicleRequest) {
         LOG.infof("Recibida petición POST para crear un nuevo vehículo con datos: %s", vehicleRequest);
         // Convierte el DTO de solicitud a un objeto de dominio Vehicle
@@ -126,25 +141,27 @@ public class VehicleResource {
     @GET
     @Path("/{plate}")
     @Operation(
-        summary = "Obtener vehículo por matrícula",
-        description = "Obtiene un vehículo específico utilizando su matrícula."
+            summary = "Obtener vehículo por matrícula",
+            description = "Busca y devuelve un vehículo específico utilizando su matrícula como identificador."
     )
-    @APIResponse(
-        responseCode = "200",
-        description = "Vehículo encontrado exitosamente",
-        content = @Content(
-            mediaType = MediaType.APPLICATION_JSON,
-            schema = @Schema(implementation = VehicleResponse.class)
-        )
-    )
-    @APIResponse(
-        responseCode = "404",
-        description = "Vehículo no encontrado por la matrícula proporcionada"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Vehículo encontrado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Vehículo no encontrado por la matrícula proporcionada"
+            )
+    })
     public Response findVehicleByPlate(
             @Parameter(
                     description = "Matrícula del vehículo a buscar",
-                    example = "ABC123",
+                    example = "ABC-123",
                     required = true
             )
             @PathParam("plate") String plate
@@ -163,20 +180,22 @@ public class VehicleResource {
     @GET
     @Operation(
             summary = "Obtener todos los vehículos",
-            description = "Obtiene una lista de todos los vehículos registrados."
+            description = "Obtiene una lista completa de todos los vehículos registrados en el sistema."
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Lista de vehículos encontrada exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = VehicleResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Lista de vehículos encontrada exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "No se encontraron vehículos"
             )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "No se encontraron vehículos"
-    )
+    })
     public Response findAllVehicles() {
         LOG.info("Recibida petición GET para obtener todos los vehículos.");
         List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
@@ -189,32 +208,35 @@ public class VehicleResource {
     @Path("/{plate}")
     @Operation(
             summary = "Actualizar un vehículo",
-            description = "Actualiza un vehículo existente utilizando su matrícula como identificador."
+            description = "Actualiza un vehículo existente utilizando su matrícula como identificador. " +
+                    "El cuerpo de la solicitud debe contener los datos completos del vehículo."
     )
     @RequestBody(
-            description = "Datos del vehículo a crear",
+            description = "Objeto con los nuevos datos del vehículo. Todos los campos son obligatorios para la actualización completa.",
             required = true,
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(implementation = VehicleRequest.class)
             )
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Vehículo actualizado exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = VehicleResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Vehículo actualizado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Vehículo no encontrado por la matrícula proporcionada"
+            ),
+            @APIResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos o formato incorrecto"
             )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "Vehículo no encontrado"
-    )
-    @APIResponse(
-            responseCode = "400",
-            description = "Datos de entrada inválidos"
-    )
+    })
     public Response updateVehicleByPlate(
             @Parameter(
                     description = "Matrícula del vehículo a actualizar",

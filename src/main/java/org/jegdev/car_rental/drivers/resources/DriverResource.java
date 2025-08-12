@@ -11,6 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.logging.Logger;
 import org.jegdev.car_rental.drivers.application.usecase.*;
@@ -67,14 +68,20 @@ public class DriverResource {
             summary = "Eliminar un conductor",
             description = "Elimina un conductor existente por su ID de documento."
     )
-    @APIResponse(
-            responseCode = "204",
-            description = "Conductor eliminado exitosamente"
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "Conductor no encontrado por el ID de documento proporcionado"
-    )
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Conductor eliminado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(example = "{\"message\": \"Usuario eliminado correctamente\"}")
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Conductor no encontrado por el ID de documento proporcionado"
+            )
+    })
     public Response deleteDriver(@Parameter(
             name = "documentId",
             description = "El ID del documento del conductor a eliminar",
@@ -97,14 +104,19 @@ public class DriverResource {
             summary = "Obtener todos los conductores",
             description = "Obtiene una lista de todos los conductores registrados en el sistema."
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Lista de conductores obtenida exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = DriverResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Lista de conductores obtenida exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = DriverResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    description = "Recibir excepcion personalizada indicando que no existen usuarios"
             )
-    )
+    })
     public Response findAllDrivers() {
         // Llamar al caso de uso para obtener todos los conductores
         LOG.info("Recibida solicitud para obtener todos los conductores.");
@@ -137,22 +149,24 @@ public class DriverResource {
                     schema = @Schema(implementation = DriverUpdateRequest.class)
             )
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Conductor actualizado exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = DriverResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Conductor actualizado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = DriverResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Conductor no encontrado"
+            ),
+            @APIResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos"
             )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "Conductor no encontrado"
-    )
-    @APIResponse(
-            responseCode = "400",
-            description = "Datos de entrada inválidos"
-    )
+    })
     public Response updateDriverByDocumentId(@Parameter(
                                                      name = "documentId",
                                                      description = "El ID del documento del conductor a buscar",
@@ -163,6 +177,7 @@ public class DriverResource {
         LOG.infof("Recibida solicitud para actualizar el conductor con ID de documento: %s", documentId);
         LOG.infof("Datos del conductor a actualizar: %s", driverRequest);
         Driver updatedDriver = updateDriverUseCase.updateDriverByDocumentId(documentId, driverRequest);
+
         DriverResponse driverResponse = driverDtoMapper.toResponse(updatedDriver);
         LOG.infof("Conductor con ID de documento: %s actualizado exitosamente.", documentId);
         LOG.infof("Conductor actualizado correctamente: %s", driverResponse);
@@ -187,18 +202,24 @@ public class DriverResource {
                     schema = @Schema(implementation = DriverRequest.class)
             )
     )
-    @APIResponse(
-            responseCode = "201",
-            description = "Conductor creado exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = DriverResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "201",
+                    description = "Conductor creado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = DriverResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "400",
+                    description = "Datos de entrada inválidos"
+            ),
+            @APIResponse(
+                    responseCode = "409",
+                    description = "El conductor con el ID de documento proporcionado ya existe"
             )
-    )
-    @APIResponse(
-            responseCode = "400",
-            description = "Datos de entrada inválidos"
-    )
+    })
     public Response createDriver(@Valid DriverRequest driverRequest) {
         // Llamar al caso de uso para crear el conductor
         LOG.infof("Recibida solicitud para crear un nuevo conductor con datos: %s", driverRequest);
@@ -225,18 +246,20 @@ public class DriverResource {
             summary = "Obtener un conductor por su ID de documento",
             description = "Busca y devuelve un conductor específico utilizando su ID de documento."
     )
-    @APIResponse(
-            responseCode = "200",
-            description = "Conductor encontrado exitosamente",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = DriverResponse.class)
+    @APIResponses({
+            @APIResponse(
+                    responseCode = "200",
+                    description = "Conductor encontrado exitosamente",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON,
+                            schema = @Schema(implementation = DriverResponse.class)
+                    )
+            ),
+            @APIResponse(
+                    responseCode = "404",
+                    description = "Conductor no encontrado por el ID de documento proporcionado"
             )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "Conductor no encontrado por el ID de documento proporcionado"
-    )
+    })
     public Response findDriverByDocumentId(
             @Parameter(
                     description = "ID del documento del conductor a buscar",

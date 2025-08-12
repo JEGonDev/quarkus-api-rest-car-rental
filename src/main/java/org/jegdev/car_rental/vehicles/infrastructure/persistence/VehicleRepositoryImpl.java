@@ -38,8 +38,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      * @param vehicle El vehículo del dominio a guardar.
      * @return El vehículo guardado convertido de vuelta al dominio.
      */
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     @Override
     public Vehicle save(Vehicle vehicle) {
@@ -62,8 +62,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      * @param plate La matrícula del vehículo a buscar.
      * @return Un Optional que contiene el vehículo encontrado, o vacío si no se encuentra.
      */
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000, skipOn = MongoWriteException.class)
     @Override
     public Optional<Vehicle> findByPlate(String plate) {
@@ -87,8 +87,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      * @param plate La matrícula del vehículo a eliminar.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000)
     public void deleteByPlate(String plate) {
         LOG.infof("Iniciando la eliminación del vehículo con matrícula: %s", plate);
@@ -107,8 +107,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      * @return Una lista de vehículos del dominio.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     public List<Vehicle> findAll() {
         LOG.info("Iniciando la búsqueda de todos los vehículos.");
         List<Vehicle> vehicles = repository.findAll()
@@ -127,8 +127,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
      * @return El vehículo actualizado convertido de vuelta al dominio.
      */
     @Override
-    @Retry(maxRetries = 3, delay = 200)
-    @Timeout(200)
+    @Retry(maxRetries = 3, delay = 2000)
+    @Timeout(2000)
     @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.75, delay = 1000, skipOn = MongoWriteException.class)
     public Vehicle update(Vehicle vehicle) {
         LOG.infof("Iniciando la actualización para el vehículo con matrícula: %s", vehicle.getPlate());
