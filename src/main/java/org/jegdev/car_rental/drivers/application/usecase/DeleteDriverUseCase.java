@@ -5,6 +5,8 @@ import jakarta.inject.Inject;
 import org.jegdev.car_rental.drivers.domain.repository.DriverRepository;
 import org.jegdev.car_rental.drivers.exceptions.personalized.DriverNotFoundByDocumentIdException;
 
+import org.jboss.logging.Logger;
+
 /**
  * Caso de uso para eliminar un conductor.
  * Esta clase encapsula la lógica de negocio para encontrar y eliminar un conductor.
@@ -12,6 +14,7 @@ import org.jegdev.car_rental.drivers.exceptions.personalized.DriverNotFoundByDoc
 @ApplicationScoped
 public class DeleteDriverUseCase {
 
+    private static final Logger LOG = Logger.getLogger(DeleteDriverUseCase.class.getName());
     private final DriverRepository driverRepository;
 
     @Inject
@@ -26,13 +29,18 @@ public class DeleteDriverUseCase {
      * @throws DriverNotFoundByDocumentIdException si el conductor con el ID de documento no existe.
      */
     public void deleteDriverByDocumentId(String documentId) {
-        // Se busca el conductor para validar su existencia
+        LOG.infof("Iniciando la eliminación del conductor con ID de documento: %s", documentId);
+
+        LOG.debugf("Verificando la existencia del conductor con ID de documento: %s", documentId);
         boolean driverExists = driverRepository.findByDocumentId(documentId).isPresent();
         if (!driverExists) {
+            LOG.warnf("Intento de eliminar un conductor que no existe con ID de documento: %s", documentId);
             throw new DriverNotFoundByDocumentIdException(documentId);
         }
 
-        // Se elimina el conductor si existe
+        LOG.debugf("Conductor encontrado. Procediendo a eliminarlo de la base de datos.");
         driverRepository.deleteByDocumentId(documentId);
+
+        LOG.infof("Conductor con ID de documento: %s eliminado exitosamente.", documentId);
     }
 }
