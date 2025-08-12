@@ -171,7 +171,6 @@ public class VehicleResource {
     )
     public Response findAllVehicles() {
         List<VehicleResponse> responseList = findAllVehiclesUseCase.findAllVehicles();
-
         return Response.ok(responseList).build();
     }
 

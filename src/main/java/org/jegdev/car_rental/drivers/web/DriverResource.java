@@ -13,6 +13,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jegdev.car_rental.drivers.application.usecase.CreateDriverUseCase;
+import org.jegdev.car_rental.drivers.application.usecase.FindAllDriversUseCase;
 import org.jegdev.car_rental.drivers.application.usecase.FindDriverByDocumentIdUseCase;
 import org.jegdev.car_rental.drivers.application.usecase.UpdateDriverUseCase;
 import org.jegdev.car_rental.drivers.domain.model.Driver;
@@ -20,6 +21,9 @@ import org.jegdev.car_rental.drivers.infrastructure.dto.DriverRequest;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverResponse;
 import org.jegdev.car_rental.drivers.infrastructure.dto.DriverUpdateRequest;
 import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverDtoMapper;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Recurso REST para la gestión de conductores.
@@ -31,20 +35,49 @@ import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverDtoMapper;
 @Consumes(MediaType.APPLICATION_JSON)
 public class DriverResource {
 
+    private final FindAllDriversUseCase findAllDriversUseCase;
     private final UpdateDriverUseCase updateDriverUseCase;
     private final CreateDriverUseCase createDriverUseCase;
     private final FindDriverByDocumentIdUseCase findDriverByDocumentIdUseCase;
     private final DriverDtoMapper driverDtoMapper;
 
     @Inject
-    public DriverResource(UpdateDriverUseCase updateDriverUseCase,
+    public DriverResource(FindAllDriversUseCase findAllDriversUseCase,
+                          UpdateDriverUseCase updateDriverUseCase,
                           CreateDriverUseCase createDriverUseCase,
                           FindDriverByDocumentIdUseCase findDriverByDocumentIdUseCase,
                           DriverDtoMapper driverDtoMapper) {
+        this.findAllDriversUseCase = findAllDriversUseCase;
         this.updateDriverUseCase = updateDriverUseCase;
         this.createDriverUseCase = createDriverUseCase;
         this.findDriverByDocumentIdUseCase = findDriverByDocumentIdUseCase;
         this.driverDtoMapper = driverDtoMapper;
+    }
+
+    /**
+     * Endpoint para obtener todos los conductores.
+     * @return Una lista de todos los conductores.
+     */
+    @GET
+    @Operation(
+            summary = "Obtener todos los conductores",
+            description = "Obtiene una lista de todos los conductores registrados en el sistema."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Lista de conductores obtenida exitosamente",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = DriverResponse.class)
+            )
+    )
+    public Response findAllDrivers() {
+        // Llamar al caso de uso para obtener todos los conductores
+        List<Driver> driverList = findAllDriversUseCase.findAllDrivers();
+        // Mapear la lista de entidades de dominio a una lista de DTOs de respuesta
+        List<DriverResponse> driverResponses = driverDtoMapper.toResponseList(driverList);
+        // Devolver la respuesta con el código 200 (OK) y la lista de conductores
+        return Response.ok(driverResponses).build();
     }
 
     /**
