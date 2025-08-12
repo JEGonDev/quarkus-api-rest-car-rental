@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -105,7 +106,14 @@ public class DriverResource {
             responseCode = "404",
             description = "Conductor no encontrado por el ID de documento proporcionado"
     )
-    public Response findDriverByDocumentId(@PathParam("documentId") String documentId) {
+    public Response findDriverByDocumentId(
+            @Parameter(
+                    description = "ID del documento del conductor a buscar",
+                    required = true,
+                    example = "123456789"
+            )
+            @PathParam("documentId") String documentId
+    ) {
         // Llamar al caso de uso para buscar el conductor por su ID de documento
         Driver driver = findDriverByDocumentIdUseCase.findDriverByDocumentId(documentId);
         // Mapear la entidad de dominio a un DTO de respuesta
