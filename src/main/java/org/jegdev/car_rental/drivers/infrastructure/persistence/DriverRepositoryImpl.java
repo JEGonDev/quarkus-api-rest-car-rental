@@ -2,8 +2,16 @@ package org.jegdev.car_rental.drivers.infrastructure.persistence;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.faulttolerance.Timeout;
+import org.jegdev.car_rental.drivers.domain.model.Driver;
 import org.jegdev.car_rental.drivers.domain.repository.DriverRepository;
+import org.jegdev.car_rental.drivers.infrastructure.entity.DriverEntity;
+import org.jegdev.car_rental.drivers.infrastructure.mapper.DriverPersistenceMapper;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Implementación del repositorio de conductores que utiliza Panache para interactuar con MongoDB.
