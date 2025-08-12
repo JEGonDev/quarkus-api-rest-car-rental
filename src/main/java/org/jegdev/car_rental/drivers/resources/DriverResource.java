@@ -1,4 +1,4 @@
-package org.jegdev.car_rental.drivers.web;
+package org.jegdev.car_rental.drivers.resources;
 
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
