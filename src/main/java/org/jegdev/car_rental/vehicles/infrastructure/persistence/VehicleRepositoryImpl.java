@@ -74,4 +74,9 @@ public class VehicleRepositoryImpl implements VehicleRepository {
     public List<Vehicle> findAll() {
         return List.of();
     }
+
+    @Override
+    public Vehicle update(Vehicle vehicle) {
+        return null;
+    }
 }

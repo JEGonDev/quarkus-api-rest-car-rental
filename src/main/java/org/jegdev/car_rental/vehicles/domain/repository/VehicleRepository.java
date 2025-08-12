@@ -10,4 +10,5 @@ public interface VehicleRepository {
     Optional<Vehicle> findByPlate(String plate);
     void deleteByPlate(String plate);
     List<Vehicle> findAll();
+    Vehicle update(Vehicle vehicle);
 }
