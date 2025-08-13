@@ -3,7 +3,6 @@ package org.jegdev.car_rental.rental.infrastructure.mapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jegdev.car_rental.rental.domain.model.Rental;
 import org.jegdev.car_rental.rental.infrastructure.dto.RentalRequest;
-import org.jegdev.car_rental.rental.infrastructure.dto.RentalResponse;
 
 import java.util.Objects;
 
@@ -28,12 +27,12 @@ public class RentalDtoMapper {
     }
 
     // Convierte una entidad de dominio (Rental) a un DTO de respuesta (RentalResponse).
-    public RentalResponse toResponse(Rental rental) {
+    public org.jegdev.car_rental.rental.infrastructure.dto.RentalResponse toResponse(Rental rental) {
         if (Objects.isNull(rental)) {
             return null;
         }
 
-        return RentalResponse.builder()
+        return org.jegdev.car_rental.rental.infrastructure.dto.RentalResponse.builder()
                 .id(rental.getId())
                 .vehicleId(rental.getVehicleId())
                 .driverId(rental.getDriverId())
