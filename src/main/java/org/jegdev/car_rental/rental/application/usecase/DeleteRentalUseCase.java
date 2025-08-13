@@ -11,8 +11,12 @@ import org.jegdev.car_rental.vehicles.domain.model.VehicleStatus;
 import org.jegdev.car_rental.vehicles.domain.repository.VehicleRepository;
 import org.jegdev.car_rental.vehicles.exceptions.personalized.VehicleNotFoundByPlateException;
 
+import java.util.Optional;
+
 /**
- * Caso de uso para eliminar una renta por su ID.
+ * Caso de uso para eliminar una renta existente por su ID.
+ * Orquesta la lógica de negocio para validar la existencia de la renta,
+ * actualizar el estado del vehículo asociado y eliminar la renta.
  */
 @ApplicationScoped
 public class DeleteRentalUseCase {
@@ -29,57 +33,76 @@ public class DeleteRentalUseCase {
     }
 
     /**
-     * Elimina una renta del sistema por su ID.
+     * Elimina una renta del sistema por su ID y actualiza el estado del vehículo asociado.
+     *
      * @param rentalId El ID de la renta a eliminar.
-     * @throws RentalNotFoundException si la renta no se encuentra.
+     * @throws RentalNotFoundException Si la renta no se encuentra.
+     * @throws VehicleNotFoundByPlateException Si el vehículo asociado no se encuentra.
      */
     public void deleteRental(String rentalId) {
-        LOG.infof("Recibida solicitud para eliminar la renta con ID: %s", rentalId);
+        LOG.infof("Iniciando eliminación de la renta con ID: %s", rentalId);
 
-        // Separa la lógica de validación, actualización y eliminación en métodos privados
+        // Paso 1: Validar que la renta exista
         Rental rentalToDelete = validateRentalExists(rentalId);
+
+        // Paso 2: Actualizar el estado del vehículo a AVAILABLE
         updateVehicleStatus(rentalToDelete.getVehicleId());
+
+        // Paso 3: Eliminar la renta del repositorio
         removeRental(rentalId);
 
-        LOG.infof("Renta con ID %s eliminada exitosamente. El vehículo ha sido marcado como 'AVAILABLE'.", rentalId);
+        LOG.infof("Renta con ID: %s eliminada exitosamente. Vehículo con placa: %s marcado como AVAILABLE",
+                rentalId, rentalToDelete.getVehicleId());
     }
 
     /**
-     * Valida la existencia de la renta.
-     * @param rentalId El ID de la renta.
-     * @return El objeto Rental si se encuentra.
-     * @throws RentalNotFoundException si la renta no existe.
+     * Valida la existencia de la renta por su ID.
+     *
+     * @param rentalId El ID de la renta a validar.
+     * @return El objeto de dominio Rental si se encuentra.
+     * @throws RentalNotFoundException Si la renta no existe.
      */
     private Rental validateRentalExists(String rentalId) {
-        return rentalRepository.findById(rentalId)
-                .orElseThrow(() -> {
-                    LOG.warnf("No se encontró renta para eliminación con ID: %s", rentalId);
-                    return new RentalNotFoundException("No se encontró la renta para eliminación con ID: " + rentalId);
-                });
+        LOG.debugf("Buscando renta con ID: %s para verificar su existencia", rentalId);
+        Optional<Rental> rentalOptional = rentalRepository.findById(rentalId);
+
+        if (rentalOptional.isPresent()) {
+            LOG.debugf("Renta con ID: %s encontrada", rentalId);
+            return rentalOptional.get();
+        } else {
+            LOG.warnf("No se encontró renta con ID: %s. Lanzando excepción", rentalId);
+            throw new RentalNotFoundException("Renta no encontrada con ID: " + rentalId);
+        }
     }
 
     /**
-     * Actualiza el estado del vehículo a 'AVAILABLE' en el repositorio.
-     * @param vehicleId El ID del vehículo asociado a la renta eliminada.
+     * Actualiza el estado del vehículo asociado a AVAILABLE.
+     *
+     * @param vehicleId La placa del vehículo asociado a la renta.
+     * @throws VehicleNotFoundByPlateException Si el vehículo no se encuentra.
      */
     private void updateVehicleStatus(String vehicleId) {
-        LOG.infof("Actualizando el estado del vehículo con ID: %s a 'AVAILABLE'", vehicleId);
+        LOG.debugf("Buscando vehículo con placa: %s para actualizar su estado a AVAILABLE", vehicleId);
+        Optional<Vehicle> vehicleOptional = vehicleRepository.findByPlate(vehicleId);
 
-        Vehicle vehicle = vehicleRepository.findByPlate(vehicleId)
-                .orElseThrow(() -> {
-                    LOG.errorf("Error fatal: No se encontró el vehículo con ID %s asociado a la renta. ", vehicleId);
-                    return new VehicleNotFoundByPlateException(vehicleId);
-                });
+        if (vehicleOptional.isEmpty()) {
+            LOG.warnf("No se encontró vehículo con placa: %s. Lanzando excepción", vehicleId);
+            throw new VehicleNotFoundByPlateException(vehicleId);
+        }
 
+        Vehicle vehicle = vehicleOptional.get();
+        LOG.debugf("Actualizando estado del vehículo con placa: %s a AVAILABLE", vehicleId);
         vehicle.setStatus(VehicleStatus.AVAILABLE);
         vehicleRepository.update(vehicle);
     }
 
     /**
-     * Realiza la eliminación de la renta.
+     * Elimina la renta del repositorio.
+     *
      * @param rentalId El ID de la renta a eliminar.
      */
     private void removeRental(String rentalId) {
+        LOG.debugf("Eliminando renta con ID: %s del repositorio", rentalId);
         rentalRepository.deleteByOrderId(rentalId);
     }
 }

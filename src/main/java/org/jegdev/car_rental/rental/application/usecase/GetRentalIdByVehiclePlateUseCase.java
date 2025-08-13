@@ -11,6 +11,7 @@ import java.util.Optional;
 
 /**
  * Caso de uso para obtener el ID de una renta a través de la placa de un vehículo.
+ * Orquesta la lógica para buscar una renta asociada a una placa de vehículo y devolver su ID.
  */
 @ApplicationScoped
 public class GetRentalIdByVehiclePlateUseCase {
@@ -25,35 +26,39 @@ public class GetRentalIdByVehiclePlateUseCase {
     }
 
     /**
-     * Obtiene el ID de una renta buscando por la placa del vehículo.
+     * Obtiene el ID de una renta buscando por la placa del vehículo asociado.
      *
      * @param vehiclePlate La placa del vehículo asociada a la renta.
-     * @return El ID de la renta.
-     * @throws RentalNotFoundException si no se encuentra una renta para la placa dada.
+     * @return El ID de la renta encontrada.
+     * @throws RentalNotFoundException Si no se encuentra una renta para la placa dada.
      */
     public String getRentalIdByVehiclePlate(String vehiclePlate) {
-        LOG.infof("Buscando ID de renta por placa de vehículo: %s", vehiclePlate);
+        LOG.infof("Iniciando búsqueda de renta para la placa de vehículo: %s", vehiclePlate);
 
-        // Busca y valida la existencia de la renta
+        // Paso 1: Buscar y validar la existencia de la renta
         Rental rental = findRentalOrThrow(vehiclePlate);
 
-        // Devuelve el ID de la renta
-        LOG.infof("Renta encontrada para la placa %s con ID: %s", vehiclePlate, rental.getId());
+        LOG.infof("Renta encontrada para la placa de vehículo: %s, ID: %s", vehiclePlate, rental.getId());
         return rental.getId();
     }
 
     /**
-     * Busca una renta por la placa del vehículo y lanza una excepción si no la encuentra.
+     * Busca una renta por la placa del vehículo y lanza una excepción si no se encuentra.
      *
-     * @param vehiclePlate La placa del vehículo.
-     * @return La entidad Rental encontrada.
-     * @throws RentalNotFoundException si la renta no existe.
+     * @param vehiclePlate La placa del vehículo a buscar.
+     * @return El objeto de dominio Rental encontrado.
+     * @throws RentalNotFoundException Si no se encuentra una renta asociada.
      */
     private Rental findRentalOrThrow(String vehiclePlate) {
-        return rentalRepository.findByVehicleId(vehiclePlate)
-                .orElseThrow(() -> {
-                    LOG.warnf("No se encontró renta para la placa de vehículo: %s", vehiclePlate);
-                    return new RentalNotFoundException("No se encontró renta para la placa de vehículo: " + vehiclePlate);
-                });
+        LOG.debugf("Buscando renta asociada a la placa de vehículo: %s", vehiclePlate);
+        Optional<Rental> rentalOptional = rentalRepository.findByVehicleId(vehiclePlate);
+
+        if (rentalOptional.isPresent()) {
+            LOG.debugf("Renta encontrada para la placa de vehículo: %s", vehiclePlate);
+            return rentalOptional.get();
+        } else {
+            LOG.warnf("No se encontró renta para la placa de vehículo: %s. Lanzando excepción", vehiclePlate);
+            throw new RentalNotFoundException("No se encontró renta para la placa de vehículo: " + vehiclePlate);
+        }
     }
 }

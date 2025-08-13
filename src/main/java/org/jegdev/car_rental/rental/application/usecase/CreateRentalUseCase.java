@@ -2,6 +2,7 @@ package org.jegdev.car_rental.rental.application.usecase;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import org.jboss.logging.Logger;
 import org.jegdev.car_rental.api.weatherApi.dto.WeatherInfo;
 import org.jegdev.car_rental.api.weatherApi.provider.WeatherProvider;
@@ -21,7 +22,11 @@ import org.jegdev.car_rental.vehicles.exceptions.personalized.VehicleNotFoundByP
 import java.time.Instant;
 import java.util.Optional;
 
-// Clase que representa el caso de uso para crear una nueva renta de vehículo.
+/**
+ * Caso de uso para la creación de una nueva renta de vehículo.
+ * Orquesta la lógica de negocio para validar la disponibilidad del vehículo,
+ * consultar el clima del destino, mapear los datos y guardar la renta.
+ */
 @ApplicationScoped
 public class CreateRentalUseCase {
 
@@ -30,17 +35,11 @@ public class CreateRentalUseCase {
     private final RentalRepository rentalRepository;
     private final RentalDtoMapper rentalDtoMapper;
     private final VehicleRepository vehicleRepository;
-    private final WeatherProvider weatherProvider; // Proveedor de datos meteorológicos para la renta
+    private final WeatherProvider weatherProvider;
 
-    /**
-     * Constructor para inyectar las dependencias necesarias.
-     *
-     * @param rentalRepository Repositorio para la persistencia de rentas.
-     * @param rentalDtoMapper Mapper para convertir DTOs a la entidad de dominio.
-     * @param vehicleRepository Repositorio para consultar la disponibilidad del vehículo.
-     */
     @Inject
-    public CreateRentalUseCase(RentalRepository rentalRepository, RentalDtoMapper rentalDtoMapper, VehicleRepository vehicleRepository, WeatherProvider weatherProvider) {
+    public CreateRentalUseCase(RentalRepository rentalRepository, RentalDtoMapper rentalDtoMapper,
+                               VehicleRepository vehicleRepository, WeatherProvider weatherProvider) {
         this.rentalRepository = rentalRepository;
         this.rentalDtoMapper = rentalDtoMapper;
         this.vehicleRepository = vehicleRepository;
@@ -48,80 +47,84 @@ public class CreateRentalUseCase {
     }
 
     /**
-     * Método principal para orquestar la creación de una nueva renta.
+     * Crea una nueva renta para un vehículo, incluyendo la consulta del clima del destino.
      *
-     * @param request El DTO con los datos de la renta a crear.
-     * @return El DTO con la renta creada y el clima del destino.
+     * @param request El DTO con los datos de la solicitud de renta.
+     * @return Un DTO que contiene la información de la renta creada y el clima del destino.
+     * @throws VehicleNotFoundByPlateException Si el vehículo no existe.
+     * @throws VehicleNotAvailableException Si el vehículo no está disponible.
      */
-    public CreateRentalResponse createRental(RentalRequest request) {
-        LOG.infof("Iniciando caso de uso para crear una nueva renta para el vehículo: %s", request.getVehicleId());
+    public CreateRentalResponse createRental(@Valid RentalRequest request) {
+        LOG.infof("Iniciando creación de renta para el vehículo con placa: %s", request.getVehicleId());
 
         // Paso 1: Validar que el vehículo exista y esté disponible
         Vehicle vehicle = validateVehicleAvailability(request.getVehicleId());
 
-        // Paso 2: Consultar la API de clima para el destino.
+        // Paso 2: Consultar el clima del destino
         WeatherInfo destinationWeather = fetchDestinationWeather(request.getDestination());
-        LOG.infof("Clima para el destino '%s' obtenido: %s", request.getDestination(), destinationWeather.locationName);
 
-        // Paso 3: Mapear el DTO a la entidad de dominio 'Rental'.
+        // Paso 3: Mapear el DTO a la entidad de dominio
         Rental newRental = mapToDomain(request);
 
-        // Paso 4: Guardar la entidad 'Rental' en la base de datos.
+        // Paso 4: Guardar la renta en la base de datos
         Rental savedRental = saveRental(newRental);
 
-        // Paso 5: Actualizar el estado del vehículo a RENTED.
+        // Paso 5: Actualizar el estado del vehículo a RENTED
         updateVehicleStatus(vehicle);
 
-        LOG.infof("Renta creada exitosamente con ID: %s. El vehículo con placa: %s ha sido marcado como RENTED.", savedRental.getId(), vehicle.getPlate());
-
-        //  Mapeamos la entidad 'Rental' a 'RentalResponse'
-        // antes de crear el objeto 'CreateRentalResponse'.
+        // Paso 6: Mapear la entidad a DTO de respuesta
+        LOG.debugf("Mapeando renta con ID: %s a DTO de respuesta", savedRental.getId());
         RentalResponse rentalResponse = rentalDtoMapper.toResponse(savedRental);
 
-        // Devolvemos el DTO que agrupa ambos datos.
+        LOG.infof("Renta con ID: %s creada exitosamente para el vehículo con placa: %s",
+                savedRental.getId(), vehicle.getPlate());
         return new CreateRentalResponse(rentalResponse, destinationWeather);
     }
 
     /**
-     * Valida si el vehículo existe y está disponible para ser rentado.
+     * Valida la existencia y disponibilidad del vehículo por su placa.
      *
-     * @param vehicleId Representa la placa del vehiculo.
-     * @return La entidad de dominio del vehículo si está disponible.
-     * @throws VehicleNotFoundByPlateException si el vehículo no existe.
-     * @throws VehicleNotAvailableException si el vehículo no está disponible.
+     * @param vehicleId La placa del vehículo a validar.
+     * @return El objeto de dominio del vehículo si está disponible.
+     * @throws VehicleNotFoundByPlateException Si el vehículo no se encuentra.
+     * @throws VehicleNotAvailableException Si el vehículo no está disponible.
      */
     private Vehicle validateVehicleAvailability(String vehicleId) {
-        LOG.debugf("Validando disponibilidad para el vehículo con ID: %s", vehicleId);
+        LOG.debugf("Buscando vehículo con placa: %s para verificar su existencia y disponibilidad", vehicleId);
         Optional<Vehicle> existingVehicle = vehicleRepository.findByPlate(vehicleId);
 
         if (existingVehicle.isEmpty()) {
-            LOG.warnf("No se encontró el vehículo con Placa: %s. Lanzando excepción VehicleNotFoundByPlateException.", vehicleId);
+            LOG.warnf("No se encontró vehículo con placa: %s. Lanzando excepción", vehicleId);
             throw new VehicleNotFoundByPlateException(vehicleId);
         }
 
         Vehicle vehicle = existingVehicle.get();
         if (vehicle.getStatus() != VehicleStatus.AVAILABLE) {
-            LOG.warnf("El vehículo con Placa: %s no está disponible. Estado actual: %s. Lanzando excepción VehicleNotAvailableException.", vehicleId, vehicle.getStatus());
+            LOG.warnf("Vehículo con placa: %s no está disponible. Estado actual: %s",
+                    vehicleId, vehicle.getStatus());
             throw new VehicleNotAvailableException(vehicle.getPlate());
         }
 
-        LOG.debugf("El vehículo con placa: %s está disponible.", vehicleId);
+        LOG.debugf("Vehículo con placa: %s verificado como disponible", vehicleId);
         return vehicle;
     }
 
     /**
-     * Realiza una llamada al proveedor de clima para obtener la información del destino.
+     * Consulta la información del clima para el destino especificado.
      *
-     * @param destination El nombre del destino para el cual se quiere consultar el clima.
-     * @return Un objeto WeatherInfo con la información del clima.
+     * @param destination El destino para el cual se consulta el clima.
+     * @return Un objeto WeatherInfo con los datos del clima.
      */
     private WeatherInfo fetchDestinationWeather(String destination) {
-        LOG.debugf("Consultando el proveedor de clima para el destino: %s", destination);
+        LOG.debugf("Consultando información del clima para el destino: %s", destination);
         try {
-            return weatherProvider.getCurrentWeather(destination);
+            WeatherInfo weatherInfo = weatherProvider.getCurrentWeather(destination);
+            LOG.debugf("Clima obtenido para el destino: %s, ubicación: %s",
+                    destination, weatherInfo.locationName);
+            return weatherInfo;
         } catch (Exception e) {
-            LOG.errorf("Error al consultar el clima para el destino %s: %s", destination, e.getMessage());
-            // Retorna un objeto WeatherInfo vacío para evitar un fallo total del sistema.
+            LOG.errorf("Error al consultar el clima para el destino: %s. Mensaje: %s",
+                    destination, e.getMessage());
             return new WeatherInfo();
         }
     }
@@ -130,10 +133,10 @@ public class CreateRentalUseCase {
      * Mapea el DTO de solicitud a la entidad de dominio Rental.
      *
      * @param request El DTO con los datos de la renta.
-     * @return La entidad de dominio Rental con valores por defecto.
+     * @return La entidad de dominio Rental inicializada.
      */
     private Rental mapToDomain(RentalRequest request) {
-        LOG.debugf("Mapeando el DTO de solicitud a la entidad de dominio Rental.");
+        LOG.debugf("Mapeando DTO de solicitud a entidad de dominio para la renta");
         Rental newRental = rentalDtoMapper.toDomain(request);
         newRental.setStatus(RentalStatus.PENDING);
         newRental.setCreatedAt(Instant.now());
@@ -147,17 +150,17 @@ public class CreateRentalUseCase {
      * @return La renta guardada con su ID asignado.
      */
     private Rental saveRental(Rental rental) {
-        LOG.debugf("Guardando la renta en el repositorio.");
+        LOG.debugf("Guardando renta en el repositorio");
         return rentalRepository.save(rental);
     }
 
     /**
-     * Actualiza el estado del vehículo a 'RENTED' en el repositorio.
+     * Actualiza el estado del vehículo a RENTED en el repositorio.
      *
-     * @param vehicle El vehículo cuya propiedad de estado será actualizada.
+     * @param vehicle El objeto de dominio del vehículo a actualizar.
      */
     private void updateVehicleStatus(Vehicle vehicle) {
-        LOG.debugf("Actualizando el estado del vehículo con ID: %s a RENTED.", vehicle.getId());
+        LOG.debugf("Actualizando estado del vehículo con placa: %s a RENTED", vehicle.getPlate());
         vehicle.setStatus(VehicleStatus.RENTED);
         vehicleRepository.update(vehicle);
     }

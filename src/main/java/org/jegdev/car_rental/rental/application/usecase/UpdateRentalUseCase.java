@@ -2,11 +2,11 @@ package org.jegdev.car_rental.rental.application.usecase;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import org.jboss.logging.Logger;
 import org.jegdev.car_rental.api.weatherApi.dto.WeatherInfo;
 import org.jegdev.car_rental.api.weatherApi.provider.WeatherProvider;
 import org.jegdev.car_rental.rental.domain.model.Rental;
-import org.jegdev.car_rental.rental.domain.model.RentalStatus;
 import org.jegdev.car_rental.rental.domain.repository.RentalRepository;
 import org.jegdev.car_rental.rental.exceptions.personalized.RentalNotFoundException;
 import org.jegdev.car_rental.rental.infrastructure.dto.RentalResponse;
@@ -18,7 +18,8 @@ import java.util.Optional;
 
 /**
  * Caso de uso para actualizar una renta existente.
- * Si se actualiza el destino, también consulta el clima del nuevo destino.
+ * Orquesta la lógica de negocio para buscar una renta, aplicar actualizaciones,
+ * consultar el clima del destino si cambió y devolver la respuesta actualizada.
  */
 @ApplicationScoped
 public class UpdateRentalUseCase {
@@ -37,62 +38,65 @@ public class UpdateRentalUseCase {
     }
 
     /**
-     * Actualiza una renta con los datos proporcionados. Si el destino cambia,
-     * consulta el clima del nuevo destino.
+     * Actualiza una renta existente por su ID y, si el destino cambia, consulta el clima del nuevo destino.
      *
      * @param rentalId El ID de la renta a actualizar.
-     * @param request  El DTO con los datos actualizados.
-     * @return La renta actualizada junto con el clima del nuevo destino.
-     * @throws RentalNotFoundException si no se encuentra la renta.
+     * @param request El DTO con los datos actualizados de la renta.
+     * @return Un DTO que contiene la renta actualizada y el clima del destino.
+     * @throws RentalNotFoundException Si no se encuentra la renta.
      */
-    public RentalWithWeatherResponse updateRental(String rentalId, UpdateRentalRequest request) {
-        LOG.infof("Iniciando actualización para la renta con ID: %s", rentalId);
+    public RentalWithWeatherResponse updateRental(String rentalId, @Valid UpdateRentalRequest request) {
+        LOG.infof("Iniciando actualización de la renta con ID: %s", rentalId);
 
-        // Paso 1: Buscar la renta por su ID
+        // Paso 1: Buscar y validar la existencia de la renta
         Rental rental = findRentalById(rentalId);
 
-        // Paso 2: Aplicar las actualizaciones de forma segura para cada campo
+        // Paso 2: Aplicar las actualizaciones al objeto de dominio
         boolean destinationChanged = applyUpdates(rental, request);
 
-        // Paso 3: Persistir los cambios en la base de datos
-        Rental updatedRental = rentalRepository.update(rental);
-        LOG.infof("Renta con ID: %s actualizada exitosamente.", rentalId);
+        // Paso 3: Guardar la renta actualizada en el repositorio
+        Rental updatedRental = saveRental(rental);
 
-        // Paso 4: Obtener el clima del nuevo destino si ha cambiado o del destino actual
+        // Paso 4: Consultar el clima del destino
         WeatherInfo destinationWeather = fetchDestinationWeather(updatedRental);
-        LOG.infof("Clima para el destino '%s' obtenido: %s", updatedRental.getDestination(), destinationWeather.locationName);
 
-        // Paso 5: Mapear la entidad actualizada a un DTO de respuesta
+        // Paso 5: Mapear la entidad a DTO de respuesta
+        LOG.debugf("Mapeando renta con ID: %s a DTO de respuesta", rentalId);
         RentalResponse rentalResponse = rentalDtoMapper.toResponse(updatedRental);
 
-        // Paso 6: Devolver la respuesta encapsulada
+        LOG.infof("Renta con ID: %s actualizada exitosamente. Destino: %s", rentalId, updatedRental.getDestination());
         return new RentalWithWeatherResponse(rentalResponse, destinationWeather);
     }
 
     /**
-     * Busca una renta por su ID y lanza una excepción si no la encuentra.
+     * Busca una renta por su ID y lanza una excepción si no se encuentra.
      *
      * @param rentalId El ID de la renta a buscar.
-     * @return La renta encontrada.
-     * @throws RentalNotFoundException si no se encuentra la renta.
+     * @return El objeto de dominio Rental encontrado.
+     * @throws RentalNotFoundException Si no se encuentra la renta.
      */
     private Rental findRentalById(String rentalId) {
+        LOG.debugf("Buscando renta con ID: %s en el repositorio", rentalId);
         Optional<Rental> rentalOptional = rentalRepository.findById(rentalId);
-        if (rentalOptional.isEmpty()) {
-            LOG.warnf("Renta no encontrada con ID: %s", rentalId);
+
+        if (rentalOptional.isPresent()) {
+            LOG.debugf("Renta con ID: %s encontrada", rentalId);
+            return rentalOptional.get();
+        } else {
+            LOG.warnf("No se encontró renta con ID: %s. Lanzando excepción", rentalId);
             throw new RentalNotFoundException(rentalId);
         }
-        return rentalOptional.get();
     }
 
     /**
-     * Aplica las actualizaciones del DTO a la entidad de la renta.
+     * Aplica las actualizaciones del DTO a la entidad de dominio Rental.
      *
-     * @param rental  La entidad de la renta a actualizar.
+     * @param rental El objeto de dominio Rental a actualizar.
      * @param request El DTO con los datos actualizados.
-     * @return true si el destino fue actualizado, false en caso contrario.
+     * @return true si el destino cambió, false en caso contrario.
      */
     private boolean applyUpdates(Rental rental, UpdateRentalRequest request) {
+        LOG.debugf("Aplicando actualizaciones a la renta con ID: %s", rental.getId());
         boolean destinationChanged = false;
 
         // Actualizar los campos solo si se proporcionan en la solicitud
@@ -103,34 +107,50 @@ public class UpdateRentalUseCase {
         Optional.ofNullable(request.getOrigin()).ifPresent(rental::setOrigin);
         Optional.ofNullable(request.getPrice()).ifPresent(rental::setPrice);
 
-        // Manejar la actualización de destino y el cambio de bandera
+        // Manejar la actualización del destino
         if (request.getDestination() != null && !request.getDestination().equals(rental.getDestination())) {
-            LOG.debugf("Destino de la renta %s cambiado de '%s' a '%s'", rental.getId(), rental.getDestination(), request.getDestination());
+            LOG.debugf("Destino de la renta con ID: %s cambiado de '%s' a '%s'",
+                    rental.getId(), rental.getDestination(), request.getDestination());
             rental.setDestination(request.getDestination());
             destinationChanged = true;
         }
 
         // Manejar la actualización del estado
         if (request.getStatus() != null && !request.getStatus().equals(rental.getStatus())) {
-            LOG.debugf("Estado de la renta %s cambiado de '%s' a '%s'", rental.getId(), rental.getStatus(), request.getStatus());
+            LOG.debugf("Estado de la renta con ID: %s cambiado de '%s' a '%s'",
+                    rental.getId(), rental.getStatus(), request.getStatus());
             rental.setStatus(request.getStatus());
         }
+
         return destinationChanged;
     }
 
     /**
-     * Realiza una llamada al proveedor de clima para obtener la información de una ubicación.
+     * Guarda la renta actualizada en el repositorio.
      *
-     * @param rental La renta de la cual se quiere consultar el clima del destino.
-     * @return Un objeto WeatherInfo con la información del clima.
+     * @param rental El objeto de dominio Rental a guardar.
+     * @return La renta guardada.
+     */
+    private Rental saveRental(Rental rental) {
+        LOG.debugf("Guardando renta actualizada con ID: %s en el repositorio", rental.getId());
+        return rentalRepository.update(rental);
+    }
+
+    /**
+     * Consulta la información del clima para el destino de la renta.
+     *
+     * @param rental El objeto de dominio Rental con el destino a consultar.
+     * @return Un objeto WeatherInfo con los datos del clima.
      */
     private WeatherInfo fetchDestinationWeather(Rental rental) {
-        String location = rental.getDestination();
-        LOG.debugf("Iniciando la llamada al proveedor de clima para el destino: %s", location);
+        String destination = rental.getDestination();
+        LOG.debugf("Consultando información del clima para el destino: %s", destination);
         try {
-            return weatherProvider.getCurrentWeather(location);
+            WeatherInfo weatherInfo = weatherProvider.getCurrentWeather(destination);
+            LOG.debugf("Clima obtenido para el destino: %s, ubicación: %s", destination, weatherInfo.locationName);
+            return weatherInfo;
         } catch (Exception e) {
-            LOG.errorf("Error al consultar el clima para la ubicación %s: %s", location, e.getMessage());
+            LOG.errorf("Error al consultar el clima para el destino: %s. Mensaje: %s", destination, e.getMessage());
             return new WeatherInfo();
         }
     }
