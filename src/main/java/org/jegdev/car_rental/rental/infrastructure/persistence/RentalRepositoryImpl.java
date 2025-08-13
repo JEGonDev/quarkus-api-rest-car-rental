@@ -10,9 +10,7 @@ import org.jegdev.car_rental.rental.domain.repository.RentalRepository;
 import org.jegdev.car_rental.rental.infrastructure.entity.RentalEntity;
 import org.jegdev.car_rental.rental.infrastructure.mapper.RentalPersistenceMapper;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 // Repositorio de implementación para la entidad Rental, utilizando Panache.
 @ApplicationScoped
@@ -50,24 +48,29 @@ public class RentalRepositoryImpl implements RentalRepository {
                 .map(mapper::toDomain);
     }
 
+    /**
+     * Encuentra una renta activa buscando por el ID del vehículo.
+     *
+     * @param vehicleId El ID del vehículo (placa) asociado a la renta.
+     * @return Un Optional con la renta encontrada, si existe.
+     */
     @Override
     @Retry(maxRetries = 3, delay = 2000)
     @Timeout(2000)
-    public List<Rental> findByVehicleId(String vehicleId) {
-        LOG.infof("Buscando rentas para el vehículo con ID: %s", vehicleId);
-        return repository.list("vehicleId", vehicleId).stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
+    public Optional<Rental> findByVehicleId(String vehicleId) {
+        LOG.infof("Buscando renta por vehicleId: %s", vehicleId);
+        return repository.find("vehicleId", vehicleId)
+                .firstResultOptional()
+                .map(mapper::toDomain);
     }
 
     @Override
     @Retry(maxRetries = 3, delay = 2000)
     @Timeout(2000)
-    public List<Rental> findByDriverId(String driverId) {
-        LOG.infof("Buscando rentas para el conductor con ID: %s", driverId);
-        return repository.list("driverId", driverId).stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
+    public void deleteByOrderId(String id) {
+        LOG.infof("Eliminando renta con ID: %s", id);
+        repository.deleteById(new org.bson.types.ObjectId(id));
+        LOG.infof("Renta con ID: %s eliminada exitosamente.", id);
     }
 
     @Override

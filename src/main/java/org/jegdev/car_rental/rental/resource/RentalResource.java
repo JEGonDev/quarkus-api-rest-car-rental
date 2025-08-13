@@ -12,8 +12,10 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.logging.Logger;
 import org.jegdev.car_rental.rental.application.usecase.CreateRentalUseCase;
+import org.jegdev.car_rental.rental.application.usecase.GetRentalIdByVehiclePlateUseCase;
 import org.jegdev.car_rental.rental.application.usecase.GetRentalStatusUseCase;
 import org.jegdev.car_rental.rental.application.usecase.UpdateRentalUseCase;
+import org.jegdev.car_rental.rental.exceptions.personalized.RentalNotFoundException;
 import org.jegdev.car_rental.rental.infrastructure.dto.CreateRentalResponse;
 import org.jegdev.car_rental.rental.infrastructure.dto.RentalRequest;
 import org.jegdev.car_rental.rental.infrastructure.dto.RentalWithWeatherResponse;
@@ -28,17 +30,22 @@ public class RentalResource {
 
     private static final Logger LOG = Logger.getLogger(RentalResource.class.getName());
 
+    private final GetRentalIdByVehiclePlateUseCase getRentalIdByVehiclePlateUseCase;
     private final UpdateRentalUseCase updateRentalUseCase;
     private final CreateRentalUseCase createRentalUseCase;
     private final GetRentalStatusUseCase getRentalStatusUseCase;
-    private final RentalDtoMapper rentalDtoMapper;
 
     @Inject
-    public RentalResource(UpdateRentalUseCase updateRentalUseCase, CreateRentalUseCase createRentalUseCase, GetRentalStatusUseCase getRentalStatusUseCase, RentalDtoMapper rentalDtoMapper) {
+    public RentalResource(UpdateRentalUseCase updateRentalUseCase,
+                          CreateRentalUseCase createRentalUseCase,
+                          GetRentalStatusUseCase getRentalStatusUseCase,
+                          RentalDtoMapper rentalDtoMapper,
+                          GetRentalIdByVehiclePlateUseCase getRentalIdByVehiclePlateUseCase)
+    {
         this.updateRentalUseCase = updateRentalUseCase;
         this.createRentalUseCase = createRentalUseCase;
         this.getRentalStatusUseCase = getRentalStatusUseCase;
-        this.rentalDtoMapper = rentalDtoMapper;
+        this.getRentalIdByVehiclePlateUseCase = getRentalIdByVehiclePlateUseCase;
     }
 
     @POST
@@ -91,5 +98,19 @@ public class RentalResource {
         LOG.infof("Recibida petición para actualizar la renta con ID: %s, datos: %s", rentalId, request);
         RentalWithWeatherResponse response = updateRentalUseCase.updateRental(rentalId, request);
         return Response.ok(response).build();
+    }
+
+    @GET
+    @Path("/by-plate/{vehiclePlate}")
+    @Operation(summary = "Obtener el ID de una renta por la placa del vehículo")
+    @APIResponses(value = {
+            @APIResponse(responseCode = "200", description = "ID de la renta obtenido exitosamente",
+                    content = @Content(mediaType = MediaType.TEXT_PLAIN, schema = @Schema(implementation = String.class))),
+            @APIResponse(responseCode = "404", description = "Renta no encontrada")
+    })
+    public Response getRentalIdByVehiclePlate(@PathParam("vehiclePlate") String vehiclePlate) {
+        LOG.infof("Recibida solicitud para obtener ID de renta por la placa: %s", vehiclePlate);
+        String rentalId = getRentalIdByVehiclePlateUseCase.getRentalIdByVehiclePlate(vehiclePlate);
+        return Response.ok(rentalId).build();
     }
 }
