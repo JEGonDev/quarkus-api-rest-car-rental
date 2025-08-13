@@ -238,7 +238,7 @@ public class DriverResource {
     /**
      * Endpoint para buscar un conductor por su ID de documento.
      * @param documentId El ID del documento del conductor.
-     * @return El conductor encontrado.
+     * @return El conductor encontado.
      */
     @GET
     @Path("/{documentId}")
