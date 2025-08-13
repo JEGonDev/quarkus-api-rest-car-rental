@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface RentalRepository {
     Rental save(Rental rental);
     Optional<Rental> findById(String id);
+    // Falta implementar obtener id de una renta mediante el vehicleId y eliminar renta
     List<Rental> findByVehicleId(String vehicleId);
     List<Rental> findByDriverId(String driverId);
     Rental update(Rental rental);
